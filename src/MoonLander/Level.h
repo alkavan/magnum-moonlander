@@ -67,22 +67,20 @@ namespace Magnum::Game {
     inline b2Body* newWorldObjectBody(b2World& world,
                                       Object2D &object,
                                       const DualComplex &transformation,
-                                      const Vector2 &halfSize,
+                                      const Vector2 &size,
                                       const b2BodyType type,
                                       const Float density) {
 
         b2BodyDef bodyDefinition = createBodyDefinition(transformation, type);
         b2Body *body = world.CreateBody(&bodyDefinition);
 
-        b2PolygonShape shape = bodyShape({halfSize});
+        b2PolygonShape shape = bodyShape({size});
         b2FixtureDef fixture = bodyFixtureDefinition(shape, density);
 
         body->CreateFixture(&fixture);
         body->GetUserData().pointer = reinterpret_cast<std::uintptr_t>(&object);
         // for new box2d version
 //        body->SetUserData(&object);
-
-        object.setScaling(halfSize);
 
         return body;
     }
@@ -111,14 +109,6 @@ namespace Magnum::Game {
 
         Box *newBoxStatic(SceneGraph::DrawableGroup2D &drawable_group, DualComplex transformation,
                           Vector2 size, Color4 color);
-
-        Lander *newLander(
-                Shaders::FlatGL2D &shader,
-                SceneGraph::DrawableGroup2D &drawableGroup,
-                          GL::Texture2D &landerTexture,
-                          GL::Texture2D &engineEffectTexture,
-                          DualComplex transformation,
-                          Vector2 scale);
 
         void initialize() {
             _ground = newBoxStatic(
@@ -152,6 +142,7 @@ namespace Magnum::Game {
     Box *Level::newBox(SceneGraph::DrawableGroup2D &drawable_group, DualComplex transformation,
                        Vector2 size, Color4 color, Float density) {
         auto object = new Object2D{&_scene};
+        object->setScaling(size);
         auto body = newWorldObjectBody(_world, *object, transformation, size, b2_dynamicBody, density);
         auto drawable = new DrawableMesh{*object, _mesh, _shader, color, drawable_group};
 
@@ -162,6 +153,7 @@ namespace Magnum::Game {
     Box *Level::newBoxStatic(SceneGraph::DrawableGroup2D &drawable_group, DualComplex transformation,
                              Vector2 size, Color4 color) {
         auto object = new Object2D{&_scene};
+        object->setScaling(size);
         auto body = newWorldObjectBody(_world, *object, transformation, size, b2_staticBody, 1.0f);
         auto drawable = new DrawableMesh{*object, _mesh, _shader, color, drawable_group};
 

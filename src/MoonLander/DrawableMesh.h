@@ -18,8 +18,8 @@ namespace Magnum::Game {
                 GL::Mesh& mesh,
                 Shaders::FlatGL2D& shader,
                 const Color4 &color,
-                SceneGraph::DrawableGroup2D &drawables
-                ) : SceneGraph::Drawable2D{object, &drawables},
+                SceneGraph::DrawableGroup2D &group
+                ) : SceneGraph::Drawable2D{object, &group},
                 _mesh(mesh), _shader(shader), _color(color) {}
 
         void draw(const Matrix3 &transformationMatrix, SceneGraph::Camera2D &camera) override {
