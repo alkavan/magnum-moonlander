@@ -32,8 +32,9 @@ namespace Magnum::Game {
         Vector2i _gridSize = Vector2i{1, 1};
 
     public:
-        Sprite(Shaders::FlatGL2D &shader, GL::Texture2D &texture, GL::Mesh &mesh, Vector2i frameSize):
+        Sprite(Shaders::FlatGL2D &shader, GL::Texture2D &texture, GL::Mesh &mesh, const Vector2i &frameSize):
         _shader(shader), _texture(texture), _mesh(mesh), _frameSize(frameSize) {
+
 
             auto imageSize = _texture.imageSize(0);
 
