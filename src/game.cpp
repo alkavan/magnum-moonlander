@@ -33,16 +33,17 @@ namespace Magnum::Game {
         void mouseScrollEvent(MouseScrollEvent &event) override;
 
         Scene2D _scene{};
-        Timeline _timeline;
+        Timeline _timeline{};
 
         AssetManager _asset;
-        Level *_level;
 
         Containers::Optional<CameraControl> _cc;
         Containers::Optional<b2World> _world;
 
         Shaders::FlatGL2D _spriteShader{NoCreate};
         GL::Mesh _spriteMesh{NoCreate};
+
+        Level *_level;
 
         Containers::Pointer<Lander> _lander;
 
@@ -85,12 +86,15 @@ namespace Magnum::Game {
         GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::One,
                                        GL::Renderer::BlendFunction::OneMinusSourceAlpha);
 
+        // initialize shader for sprites
         _spriteShader = Shaders::FlatGL2D {
                 Shaders::FlatGL2D::Flag::Textured |
                 Shaders::FlatGL2D::Flag::TextureTransformation
         };
 
-        _spriteMesh = MeshTools::compile(Primitives::squareSolid(Primitives::SquareFlag::TextureCoordinates));
+        // load image textures
+        _asset.addTexture("Lander", "Lander.png");
+        _asset.addTexture("LanderEngineEffect", "LanderEngineEffect.png");
 
         // setup camera control
         _cc.emplace(CameraControl{new Object2D{&_scene}});
@@ -102,24 +106,27 @@ namespace Magnum::Game {
         _level = new Level(_scene, *_world);
         _level->initialize();
 
-        // load images as textures
-        _asset.addTexture("Lander", "Lander.png");
-        _asset.addTexture("LanderEngineEffect", "LanderEngineEffect.png");
+        // create mesh for sprites
+        _spriteMesh = MeshTools::compile(Primitives::squareSolid(Primitives::SquareFlag::TextureCoordinates));
 
         auto landerTexture = _asset.getTexture("Lander");
         auto engineEffectTexture = _asset.getTexture("LanderEngineEffect");
 
-        Vector2i landerImagSize =  landerTexture->imageSize(0);
-
         Vector2 landerScale = {
-                Float(landerImagSize.x()) * _cc->getCamera().projectionMatrix().scaling().sum(),
-                Float(landerImagSize.y()) * _cc->getCamera().projectionMatrix().scaling().sum(),
+                Float(20) * _cc->getCamera().projectionMatrix().scaling().sum(),
+                Float(20) * _cc->getCamera().projectionMatrix().scaling().sum(),
+        };
+
+        Vector2 engineEffectScale = {
+                Float(8) * _cc->getCamera().projectionMatrix().scaling().sum(),
+                Float(8) * _cc->getCamera().projectionMatrix().scaling().sum(),
         };
 
         auto transformation = DualComplex::translation(Vector2::yAxis(10.0f));
 
         {   // lander
             _landerObject.emplace(&_scene);
+            _landerObject->setScaling(landerScale);
             auto landerBody = Game::newWorldObjectBody(*_world, *_landerObject, transformation, landerScale, b2_dynamicBody, 2.0);
 
             auto landerSprite = new Sprite{_spriteShader, *landerTexture, _spriteMesh, {20, 20}};
@@ -127,7 +134,8 @@ namespace Magnum::Game {
 
             // engine effect
             _engineEffectObject.emplace(_landerObject.get());
-            _engineEffectObject->translate({0, -0.5});
+            _engineEffectObject->translateLocal({0, -1.5});
+            _engineEffectObject->setScaling(engineEffectScale);
 
             auto engineEffectSprite = new Sprite{_spriteShader, *engineEffectTexture, _spriteMesh, {8, 8}};
             _engineEffectSprite.emplace(*engineEffectSprite);
@@ -135,7 +143,7 @@ namespace Magnum::Game {
             _engineEffectAnimation.emplace(*_engineEffectSprite, 0.1f);
 
             // lander
-            _lander.emplace(Lander{*_landerObject, *landerBody, *_landerSprite, *_engineEffectSprite, *_engineEffectAnimation});
+            _lander.emplace(*_landerObject, *landerBody, *_landerSprite, *_engineEffectSprite, *_engineEffectAnimation);
         }
 
         _engineEffectAnimation->start();
@@ -255,7 +263,7 @@ namespace Magnum::Game {
 
         _engineEffectSprite->draw(
                 _cc->getCamera().projectionMatrix(),
-                _engineEffectObject->transformationMatrix()
+                _engineEffectObject->absoluteTransformationMatrix()
                 );
 
         _level->draw(_cc->getCamera());
