@@ -128,17 +128,14 @@ namespace Magnum::Game {
             _landerObject.emplace(&_scene);
             _landerObject->setScaling(landerScale);
             auto landerBody = Game::newWorldObjectBody(*_world, *_landerObject, transformation, landerScale, b2_dynamicBody, 2.0);
-
-            auto landerSprite = new Sprite{_spriteShader, *landerTexture, _spriteMesh, {20, 20}};
-            _landerSprite.emplace(*landerSprite);
+            _landerSprite.emplace(_spriteShader, *landerTexture, _spriteMesh, Vector2i{20, 20});
 
             // engine effect
             _engineEffectObject.emplace(_landerObject.get());
             _engineEffectObject->translateLocal({0, -1.5});
             _engineEffectObject->setScaling(engineEffectScale);
 
-            auto engineEffectSprite = new Sprite{_spriteShader, *engineEffectTexture, _spriteMesh, {8, 8}};
-            _engineEffectSprite.emplace(*engineEffectSprite);
+            _engineEffectSprite.emplace(_spriteShader, *engineEffectTexture, _spriteMesh, Vector2i{8, 8});
 
             _engineEffectAnimation.emplace(*_engineEffectSprite, 0.1f);
 
@@ -256,6 +253,8 @@ namespace Magnum::Game {
     void MoonLander::drawEvent() {
         GL::defaultFramebuffer.clear(GL::FramebufferClear::Color);
 
+        _level->draw(_cc->getCamera());
+
         _landerSprite->draw(
                 _cc->getCamera().projectionMatrix(),
                 _landerObject->transformationMatrix()
@@ -265,8 +264,6 @@ namespace Magnum::Game {
                 _cc->getCamera().projectionMatrix(),
                 _engineEffectObject->absoluteTransformationMatrix()
                 );
-
-        _level->draw(_cc->getCamera());
 
         swapBuffers();
         redraw();
