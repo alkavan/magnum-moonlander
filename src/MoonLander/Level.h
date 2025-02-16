@@ -90,7 +90,7 @@ namespace Magnum::Game {
         Scene2D& _scene;
         b2World& _world;
 
-        Shaders::FlatGL2D _shader{};
+        Shaders::Flat2D _shader{};
         GL::Mesh _mesh{NoCreate};
 
         SceneGraph::DrawableGroup2D _boxGroup;

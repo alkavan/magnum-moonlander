@@ -16,7 +16,7 @@ namespace Magnum::Game {
         DrawableMesh(
                 Object2D &object,
                 GL::Mesh& mesh,
-                Shaders::FlatGL2D& shader,
+                Shaders::Flat2D& shader,
                 const Color4 &color,
                 SceneGraph::DrawableGroup2D &group
                 ) : SceneGraph::Drawable2D{object, &group},
@@ -32,7 +32,7 @@ namespace Magnum::Game {
 
     private:
         GL::Mesh& _mesh;
-        Shaders::FlatGL2D& _shader;
+        Shaders::Flat2D& _shader;
         Color4 _color;
     };
 }

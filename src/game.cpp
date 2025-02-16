@@ -4,7 +4,7 @@
 #include <Magnum/GL/DefaultFramebuffer.h>
 #include <Magnum/GL/Renderer.h>
 
-#include <Magnum/Shaders/FlatGL.h>
+#include <Magnum/Shaders/Flat.h>
 #include <Magnum/Math/ConfigurationValue.h>
 #include <Magnum/Platform/Sdl2Application.h>
 #include <Magnum/Primitives/Square.h>
@@ -19,8 +19,9 @@
 namespace Magnum::Game {
     using namespace Math::Literals;
 
-    class MoonLander : public Platform::Application {
+    class MoonLander final : public Platform::Application {
     public:
+        virtual ~MoonLander() = default;
         explicit MoonLander(const Arguments &arguments);
 
     private:
@@ -37,10 +38,10 @@ namespace Magnum::Game {
 
         AssetManager _asset;
 
-        Containers::Optional<CameraControl> _cc;
-        Containers::Optional<b2World> _world;
+        Optional<CameraControl> _cc;
+        Optional<b2World> _world;
 
-        Shaders::FlatGL2D _spriteShader{NoCreate};
+        Shaders::Flat2D _spriteShader{NoCreate};
         GL::Mesh _spriteMesh{NoCreate};
 
         Level *_level;
@@ -87,9 +88,9 @@ namespace Magnum::Game {
                                        GL::Renderer::BlendFunction::OneMinusSourceAlpha);
 
         // initialize shader for sprites
-        _spriteShader = Shaders::FlatGL2D {
-                Shaders::FlatGL2D::Flag::Textured |
-                Shaders::FlatGL2D::Flag::TextureTransformation
+        _spriteShader = Shaders::Flat2D {
+                Shaders::Flat2D::Flag::Textured |
+                Shaders::Flat2D::Flag::TextureTransformation
         };
 
         // load image textures
@@ -122,9 +123,9 @@ namespace Magnum::Game {
                 Float(8) * _cc->getCamera().projectionMatrix().scaling().sum(),
         };
 
-        auto transformation = DualComplex::translation(Vector2::yAxis(10.0f));
-
-        {   // lander
+        {
+            auto transformation = DualComplex::translation(Vector2::yAxis(10.0f));
+            // lander
             _landerObject.emplace(&_scene);
             _landerObject->setScaling(landerScale);
             auto landerBody = Game::newWorldObjectBody(*_world, *_landerObject, transformation, landerScale, b2_dynamicBody, 2.0);
@@ -165,7 +166,7 @@ namespace Magnum::Game {
         _level->addBox(transformation);
     }
 
-    void MoonLander::mouseScrollEvent(Platform::Sdl2Application::MouseScrollEvent &event) {
+    void MoonLander::mouseScrollEvent(MouseScrollEvent &event) {
         // zoom-in
         if(event.offset().y() > 0) {
             _cc->zoomIn();
@@ -218,12 +219,12 @@ namespace Magnum::Game {
         }
 
         if( ! event.isAccepted()) {
-            Debug{} << "unhandled key press: " << event.keyName();
+            Debug{} << "unhandled key press: " << event.keyName().c_str();
             event.setAccepted(true);
         }
     }
 
-    void MoonLander::keyReleaseEvent(Platform::Sdl2Application::KeyEvent &event) {
+    void MoonLander::keyReleaseEvent(KeyEvent &event) {
         if(event.key() == KeyEvent::Key::W) {
             _lander->resetForceY();
             event.setAccepted(true);
@@ -245,7 +246,7 @@ namespace Magnum::Game {
         }
 
         if( ! event.isAccepted()) {
-            Debug{} << "unhandled key release: " << event.keyName();
+            Debug{} << "unhandled key release: " << event.keyName().c_str();
             event.setAccepted(true);
         }
     }

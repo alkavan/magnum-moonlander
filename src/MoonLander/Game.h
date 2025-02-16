@@ -1,7 +1,6 @@
 #ifndef MAGNUM_MOONLANDER_GAME_H
 #define MAGNUM_MOONLANDER_GAME_H
 
-#include <Magnum/SceneGraph/Scene.h>
 #include <Magnum/SceneGraph/TranslationRotationScalingTransformation2D.h>
 
 #include <box2d/box2d.h>

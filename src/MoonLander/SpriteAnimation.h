@@ -1,28 +1,12 @@
 #ifndef MAGNUM_MOONLANDER_SPRITEANIMATION_H
 #define MAGNUM_MOONLANDER_SPRITEANIMATION_H
 
-#include <Corrade/Containers/ArrayView.h>
-#include <Corrade/Containers/Optional.h>
 #include <Corrade/PluginManager/Manager.h>
-#include <Corrade/Utility/Arguments.h>
-#include <Magnum/ImageView.h>
 #include <Magnum/Timeline.h>
 #include <Magnum/Animation/Track.h>
 #include <Magnum/Animation/Player.h>
-#include <Magnum/GL/Buffer.h>
-#include <Magnum/GL/DefaultFramebuffer.h>
-#include <Magnum/GL/Mesh.h>
-#include <Magnum/GL/Texture.h>
 #include <Magnum/GL/TextureFormat.h>
 #include <Magnum/Math/Functions.h>
-#include <Magnum/Math/Matrix3.h>
-#include <Magnum/MeshTools/Compile.h>
-#include <Magnum/Platform/Sdl2Application.h>
-#include <Magnum/Primitives/Square.h>
-#include <Magnum/Shaders/FlatGL.h>
-#include <Magnum/Trade/AbstractImporter.h>
-#include <Magnum/Trade/ImageData.h>
-#include <Magnum/Trade/MeshData.h>
 
 #include "Sprite.h"
 

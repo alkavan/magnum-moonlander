@@ -1,27 +1,19 @@
 #ifndef MAGNUM_MOONLANDER_SPRITE_H
 #define MAGNUM_MOONLANDER_SPRITE_H
 
-#include <Magnum/GL/Buffer.h>
 #include <Magnum/GL/Texture.h>
 #include <Magnum/GL/Sampler.h>
 #include <Magnum/Shaders/Flat.h>
-#include <Magnum/ImageView.h>
 #include <Magnum/Timeline.h>
 #include <Magnum/Animation/Track.h>
-#include <Magnum/Animation/Player.h>
 #include <Magnum/Trade/MeshData2D.h>
-#include <Magnum/Trade/ImageData.h>
-#include <Magnum/MeshTools/Compile.h>
-#include <Magnum/Primitives/Square.h>
-#include <Magnum/SceneGraph/Scene.h>
-#include <Magnum/SceneGraph/Drawable.h>
 #include <Magnum/Math/Color.h>
 
 namespace Magnum::Game {
 
     class Sprite {
     private:
-        Shaders::FlatGL2D &_shader;
+        Shaders::Flat2D &_shader;
         GL::Texture2D &_texture;
         GL::Mesh &_mesh;
 
@@ -32,7 +24,7 @@ namespace Magnum::Game {
         Vector2i _gridSize = Vector2i{1, 1};
 
     public:
-        Sprite(Shaders::FlatGL2D &shader, GL::Texture2D &texture, GL::Mesh &mesh, const Vector2i &frameSize):
+        Sprite(Shaders::Flat2D &shader, GL::Texture2D &texture, GL::Mesh &mesh, const Vector2i &frameSize):
         _shader(shader), _texture(texture), _mesh(mesh), _frameSize(frameSize) {
 
 
