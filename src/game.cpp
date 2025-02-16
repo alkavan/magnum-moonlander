@@ -4,8 +4,11 @@
 #include <Magnum/GL/DefaultFramebuffer.h>
 #include <Magnum/GL/Renderer.h>
 
-#include <Magnum/Shaders/Flat.h>
 #include <Magnum/Math/ConfigurationValue.h>
+#include <Magnum/Math/Time.h>
+#include <Magnum/Math/Distance.h>
+
+#include <Magnum/Shaders/Flat.h>
 #include <Magnum/Platform/Sdl2Application.h>
 #include <Magnum/Primitives/Square.h>
 
@@ -16,9 +19,23 @@
 #include "MoonLander/Sprite.h"
 #include "MoonLander/SpriteAnimation.h"
 
+#include <version_config.h>
+
 namespace Magnum::Game {
     using namespace Math::Literals;
 
+    static void UpdateZoomByDistance(CameraControl& cameraControl, Vector2 p1, Vector2 p2);
+
+    constexpr Float _engineForceStep = 1.0f;
+
+    Vector2 _previousPointerPosition = {0.0f, 0.0f};
+    Float _previousVelocityMagnitude = 0.0f;
+
+    /**
+     * Represents the MoonLander application, inheriting from Platform::Application.
+     * This class manages the main game logic, rendering, and input handling
+     * for the MoonLander game.
+     */
     class MoonLander final : public Platform::Application {
     public:
         virtual ~MoonLander() = default;
@@ -30,8 +47,9 @@ namespace Magnum::Game {
 
         void keyPressEvent(KeyEvent &event) override;
         void keyReleaseEvent(KeyEvent &event) override;
-        void mousePressEvent(MouseEvent &event) override;
-        void mouseScrollEvent(MouseScrollEvent &event) override;
+        void pointerMoveEvent(PointerMoveEvent &event) override;
+        void scrollEvent(ScrollEvent &event) override;
+        void pointerPressEvent(PointerEvent& event) override;
 
         Scene2D _scene{};
         Timeline _timeline{};
@@ -41,11 +59,9 @@ namespace Magnum::Game {
         Optional<CameraControl> _cc;
         Optional<b2World> _world;
 
-        Shaders::Flat2D _spriteShader{NoCreate};
-        GL::Mesh _spriteMesh{NoCreate};
+        Shaders::FlatGL2D _spriteShader{NoCreate};
 
-        Level *_level;
-
+        Containers::Pointer<Level> _level;
         Containers::Pointer<Lander> _lander;
 
         Containers::Pointer<Object2D> _landerObject;
@@ -53,6 +69,9 @@ namespace Magnum::Game {
 
         Containers::Pointer<Sprite> _landerSprite;
         Containers::Pointer<Sprite> _engineEffectSprite;
+
+        GL::Mesh _landerSpriteMesh{NoCreate};
+        GL::Mesh _engineEffectSpriteMesh{NoCreate};
 
         Containers::Pointer<SpriteAnimation> _engineEffectAnimation;
     };
@@ -72,10 +91,10 @@ namespace Magnum::Game {
          * enable only 2x MSAA if we have enough DPI.
          */
         {
+            const auto windowTitle = std::format("Magnum Moonlander ({}-alpha)", PROJECT_VERSION);
             const Vector2 dpiScaling = this->dpiScaling({});
             Configuration conf;
-            conf.setTitle("Magnum Moonlander (1.0-alpha)")
-                    .setSize(conf.size(), dpiScaling);
+            conf.setTitle(windowTitle).setSize(conf.size(), dpiScaling);
             GLConfiguration glConf;
             glConf.setSampleCount(dpiScaling.max() < 2.0f ? 8 : 2);
             if (!tryCreate(conf, glConf))
@@ -87,11 +106,9 @@ namespace Magnum::Game {
         GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::One,
                                        GL::Renderer::BlendFunction::OneMinusSourceAlpha);
 
-        // initialize shader for sprites
-        _spriteShader = Shaders::Flat2D {
-                Shaders::Flat2D::Flag::Textured |
-                Shaders::Flat2D::Flag::TextureTransformation
-        };
+        _spriteShader = Shaders::FlatGL2D {Shaders::FlatGL2D::Configuration{}
+            .setFlags(Shaders::FlatGL2D::Flag::Textured
+                | Shaders::FlatGL2D::Flag::TextureTransformation)};
 
         // load image textures
         _asset.addTexture("Lander", "Lander.png");
@@ -104,40 +121,49 @@ namespace Magnum::Game {
         _world.emplace(GravityConstant::moon);
 
         // create and initialize level
-        _level = new Level(_scene, *_world);
+        _level.emplace(_scene, *_world);
         _level->initialize();
 
         // create mesh for sprites
-        _spriteMesh = MeshTools::compile(Primitives::squareSolid(Primitives::SquareFlag::TextureCoordinates));
-
-        auto landerTexture = _asset.getTexture("Lander");
-        auto engineEffectTexture = _asset.getTexture("LanderEngineEffect");
-
-        Vector2 landerScale = {
-                Float(20) * _cc->getCamera().projectionMatrix().scaling().sum(),
-                Float(20) * _cc->getCamera().projectionMatrix().scaling().sum(),
-        };
-
-        Vector2 engineEffectScale = {
-                Float(8) * _cc->getCamera().projectionMatrix().scaling().sum(),
-                Float(8) * _cc->getCamera().projectionMatrix().scaling().sum(),
-        };
+        _landerSpriteMesh = MeshTools::compile(squareSolid(Primitives::SquareFlag::TextureCoordinates));
+        _engineEffectSpriteMesh = MeshTools::compile(squareSolid(Primitives::SquareFlag::TextureCoordinates));
 
         {
+            auto landerTexture = _asset.getTexture("Lander");
+            auto engineEffectTexture = _asset.getTexture("LanderEngineEffect");
+
+            Vector2 landerScale = {
+                20.f * _cc->getCamera().projectionMatrix().scaling().sum(),
+                20.f * _cc->getCamera().projectionMatrix().scaling().sum(),
+            };
+
+            Vector2 engineEffectScale = {
+                8.f * _cc->getCamera().projectionMatrix().scaling().sum(),
+                8.f * _cc->getCamera().projectionMatrix().scaling().sum(),
+            };
+
             auto transformation = DualComplex::translation(Vector2::yAxis(10.0f));
+
             // lander
             _landerObject.emplace(&_scene);
             _landerObject->setScaling(landerScale);
-            auto landerBody = Game::newWorldObjectBody(*_world, *_landerObject, transformation, landerScale, b2_dynamicBody, 2.0);
-            _landerSprite.emplace(_spriteShader, *landerTexture, _spriteMesh, Vector2i{20, 20});
+
+            auto landerBody = newWorldObjectBody(
+                *_world,
+                *_landerObject,
+                transformation,
+                landerScale,
+                b2_dynamicBody,
+                2.0);
+
+            _landerSprite.emplace(_spriteShader, *landerTexture, _landerSpriteMesh, Vector2i{20, 20});
 
             // engine effect
             _engineEffectObject.emplace(_landerObject.get());
             _engineEffectObject->translateLocal({0, -1.5});
             _engineEffectObject->setScaling(engineEffectScale);
 
-            _engineEffectSprite.emplace(_spriteShader, *engineEffectTexture, _spriteMesh, Vector2i{8, 8});
-
+            _engineEffectSprite.emplace(_spriteShader, *engineEffectTexture, _engineEffectSpriteMesh, Vector2i{8, 8});
             _engineEffectAnimation.emplace(*_engineEffectSprite, 0.1f);
 
             // lander
@@ -148,105 +174,107 @@ namespace Magnum::Game {
 
         setSwapInterval(1);
 #if !defined(CORRADE_TARGET_EMSCRIPTEN) && !defined(CORRADE_TARGET_ANDROID)
-        setMinimalLoopPeriod(16);
+        setMinimalLoopPeriod(16.0_msec);
         _timeline.start();
 #endif
     }
 
-    void MoonLander::mousePressEvent(MouseEvent &event) {
-        if (event.button() != MouseEvent::Button::Left) return;
-
-        const auto position = _cc->projectedPosition(
-                Vector2{event.position()},
-                Vector2{windowSize()}
-                );
-
-        auto transformation = DualComplex::translation(position + _cc->getContainerTranslation());
-
-        _level->addBox(transformation);
+    void MoonLander::pointerMoveEvent(PointerMoveEvent &event) {
+        // @todo: implement display of coords when pointer moves
     }
 
-    void MoonLander::mouseScrollEvent(MouseScrollEvent &event) {
-        // zoom-in
-        if(event.offset().y() > 0) {
-            _cc->zoomIn();
+    void MoonLander::pointerPressEvent(PointerEvent &event)
+    {
+        if(event.isPrimary())
+        {
+            _previousPointerPosition = event.position();
+
+            if(event.pointer() & (Pointer::MouseLeft|Pointer::Finger))
+            {
+                const auto position = _cc->projectedPosition(
+                    Vector2{event.position()},
+                    Vector2{windowSize()}
+                    );
+
+                const auto transformation = DualComplex::translation(position + _cc->getContainerTranslation());
+                _level->addBox(transformation);
+            }
         }
 
-        // zoom-out
-        if(event.offset().y() < 0) {
-            _cc->zoomOut();
-        }
+        event.setAccepted(true);
     }
 
-    void MoonLander::keyPressEvent(Platform::Sdl2Application::KeyEvent &event) {
-//        auto screenProjection = Matrix3::projection(Vector2{windowSize()});
+    /**
+     * 
+     * @param event Application mouse scroll event.
+     */
+    void MoonLander::scrollEvent(ScrollEvent &event) {
+        _cc->OnScrollEvent(event);
+    }
 
-        // move camera to the left
-//        if(event.key() == KeyEvent::Key::Left) {
-//            _cameraControl->move(Vector2::xAxis(-5.0f) * screenProjection.scaling());
-//        }
-
-//        if(event.key() == KeyEvent::Key::Right) {
-//            _cameraControl->move(Vector2::xAxis(5.0f) * screenProjection.scaling());
-//        }
+    void MoonLander::keyPressEvent(KeyEvent &event) {
+        // pass key event to camera control
+        _cc->OnKeyPressEvent(event);
 
         // exit game
-        if(event.key() == KeyEvent::Key::Esc) {
+        if(event.key() == Key::Esc) {
             event.setAccepted(true);
             exit();
         }
 
-        auto forceStep = Float(1.0);
-
-        if(event.key() == KeyEvent::Key::W) {
-            _lander->addForceY(forceStep);
+        // forward
+        if(event.key() == Key::W) {
+            _lander->addForceY(_engineForceStep);
             event.setAccepted(true);
         }
 
-        if(event.key() == KeyEvent::Key::S) {
-            _lander->addForceY(-forceStep);
+        // backward
+        if(event.key() == Key::S) {
+            _lander->addForceY(-_engineForceStep);
             event.setAccepted(true);
         }
 
-        if(event.key() == KeyEvent::Key::D) {
-            _lander->addForceX(forceStep);
+        // right
+        if(event.key() == Key::D) {
+            _lander->addForceX(_engineForceStep);
             event.setAccepted(true);
         }
 
-        if(event.key() == KeyEvent::Key::A) {
-            _lander->addForceX(-forceStep);
+        // left
+        if(event.key() == Key::A) {
+            _lander->addForceX(-_engineForceStep);
             event.setAccepted(true);
         }
 
         if( ! event.isAccepted()) {
-            Debug{} << "unhandled key press: " << event.keyName().c_str();
+            Debug{} << "unhandled key press: " << event.keyName();
             event.setAccepted(true);
         }
     }
 
     void MoonLander::keyReleaseEvent(KeyEvent &event) {
-        if(event.key() == KeyEvent::Key::W) {
+        if(event.key() == Key::W) {
             _lander->resetForceY();
             event.setAccepted(true);
         }
 
-        if(event.key() == KeyEvent::Key::S) {
+        if(event.key() == Key::S) {
             _lander->resetForceY();
             event.setAccepted(true);
         }
 
-        if(event.key() == KeyEvent::Key::D) {
+        if(event.key() == Key::D) {
             _lander->resetForceX();
             event.setAccepted(true);
         }
 
-        if(event.key() == KeyEvent::Key::A) {
+        if(event.key() == Key::A) {
             _lander->resetForceX();
             event.setAccepted(true);
         }
 
         if( ! event.isAccepted()) {
-            Debug{} << "unhandled key release: " << event.keyName().c_str();
+            Debug{} << "unhandled key release: " << event.keyName();
             event.setAccepted(true);
         }
     }
@@ -278,7 +306,7 @@ namespace Magnum::Game {
         _world->Step(dt, 6, 2);
 
         // update
-        _cc->updateProjection();
+        // _cc->updateProjection();
 
         _engineEffectAnimation->tick();
 
@@ -289,20 +317,70 @@ namespace Magnum::Game {
         }
 
         // move camera to lander position
-//        auto landerPosition = Vector2{
-//            _lander->getBody().GetPosition().x,
-//            _lander->getBody().GetPosition().y
-//        };
-//
-//        _cc->moveTo(landerPosition);
+        // const auto landerPosition = Vector2{
+            // _lander->getBody().GetPosition().x,
+            // _lander->getBody().GetPosition().y
+        // };
 
-        // TODO: zoom out and in when velocity between 150.0 to 50.0
-//        auto landerVelocity = _lander->getVelocity();
-//        if(landerVelocity > Vector2{1.0f, 1.0f}) {
-//            _cameraControl->zoomAdd({1.0f, 1.0f});
-//        }
+        // _cc->moveTo(landerPosition);
+
+        const Vector2 shipPosition = _lander->getObject().translation();
+        const Vector2 screenCenter = Vector2{windowSize()} / 2.0f;
+        UpdateZoomByDistance(*_cc, shipPosition, screenCenter);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        // Handle zooming by lander velocity
+        //
+        // const Vector2 landerVelocity = _lander->getVelocity();
+        //
+        // // Stop zooming by velocity when sufficiently close to the anchor
+        // if (_cc->isZoomingByVelocity() && _cc->isZoomCloseToAnchor(0.01f)) {
+        //     _cc->stopZoomingByVelocity();
+        //     // todo: set to anchor.
+        // }
+        //
+        // if (const float velocityMagnitude = std::abs(landerVelocity.y()); velocityMagnitude >= 0.1f) {
+        //     if (!_cc->isZoomingByVelocity()) {
+        //         _cc->startZoomingByVelocity();
+        //     }
+        //
+        //     // Zoom OUT (reduce zoom) proportional to velocity
+        //     const auto zoomAdjustment = Vector2{velocityMagnitude * 0.5f + 0.1f, velocityMagnitude * 0.5f + 0.1f};
+        //     _cc->zoomOut(zoomAdjustment);
+        // } else {
+        //     if (!_cc->isZoomingByVelocity()) {
+        //         _cc->startZoomingByVelocity();
+        //     }//
+        //
+        //     constexpr float minimumZoomIncrement = 0.01f;
+        //     // Zoom IN (increase zoom) faster when nearly stationary
+        //     const float fastZoomAdjustment = std::max((0.1f - velocityMagnitude) * 2.0f, minimumZoomIncrement);
+        //     // _cc->zoomIn(Vector2{fastZoomAdjustment, fastZoomAdjustment});
+        //     _cc->zoomToAnchor(Vector2{fastZoomAdjustment, fastZoomAdjustment});
+        // }
     }
 
+    // Static function to adjust zoom dynamically based on ship positions
+    static void UpdateZoomByDistance(CameraControl& cameraControl, const Vector2 p1, const Vector2 p2) {
+        // Calculate the Euclidean distance between the two points (p1 and p2)
+        const float distance = Math::Distance::pointPoint(p2, p1);
+        Debug() << "distance: " << distance;
+        // Define zoom factor based on the distance
+        // Vector2 targetZoom = cameraControl.getZoomAnchor(); // Default to anchor zoom
+
+
+        if (distance > 0.0f) {
+            cameraControl.zoomToMax(Vector2(distance * 0.001f));
+            // targetZoom += Vector2(distance * 0.1f); // Scale zoom based on distance
+        }
+
+        // Clamp the target zoom between the minimum and maximum allowed zooms
+        // targetZoom = clamp(targetZoom, cameraControl.getZoomMin(), cameraControl.getZoomMax());
+
+        // Set the camera's zoom to the clamped value
+        // cameraControl.setZoom(targetZoom);
+    }
 }
 
 MAGNUM_APPLICATION_MAIN(Magnum::Game::MoonLander)

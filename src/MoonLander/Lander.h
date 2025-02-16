@@ -2,8 +2,8 @@
 #define MAGNUM_MOONLANDER_LANDER_H
 
 
-#include "../Sprite.h"
-#include "../SpriteAnimation.h"
+#include "Sprite.h"
+#include "SpriteAnimation.h"
 
 namespace Magnum::Game {
     class Lander {
@@ -18,21 +18,29 @@ namespace Magnum::Game {
         Vector2 _thrusterForce = {0.0f, 0.0f};
         Vector2 _thrusterImpulse = {0.0f, 0.0f};
 
-        void thrusterForceToCenter(Vector2 force) {
+        void thrusterForceToCenter(Vector2 force) const
+        {
             _body.ApplyForceToCenter(b2Vec2{force.x(), force.y()}, true);
         }
 
-        void thrusterImpulseToCenter(Vector2 force) {
+        void thrusterImpulseToCenter(Vector2 force) const
+        {
             _body.ApplyLinearImpulseToCenter(b2Vec2{force.x() / 10.0f, force.y() / 10.0f}, true);
         }
 
     public:
-        Lander(Object2D &object, b2Body &body, Sprite &landerSprite, Sprite &engineEffectSprite, SpriteAnimation &engineEffectAnimation):
-                _object(object),
-                _body(body),
-                _landerSprite(landerSprite),
-                _engineEffectSprite(engineEffectSprite),
-                _engineEffectAnimation(engineEffectAnimation) {}
+        Lander(
+            Object2D &object,
+            b2Body &body,
+            Sprite &landerSprite,
+            Sprite &engineEffectSprite,
+            SpriteAnimation &engineEffectAnimation
+            ):
+        _object(object),
+        _body(body),
+        _landerSprite(landerSprite),
+        _engineEffectSprite(engineEffectSprite),
+        _engineEffectAnimation(engineEffectAnimation) {}
 
         [[nodiscard]] Object2D &getObject() const {
             return _object;
@@ -47,7 +55,8 @@ namespace Magnum::Game {
             return {velocity.x, velocity.y};
         }
 
-        void update(const Float dt) {
+        void update(const Float dt) const
+        {
             thrusterForceToCenter(_thrusterForce/dt);
 //            thrusterImpulseToCenter(_thrusterImpulse/dt);
 
@@ -56,11 +65,11 @@ namespace Magnum::Game {
                     .setRotation(Complex::rotation(Rad(_body.GetAngle())));
         }
 
-        void addForceX(Float force) {
+        void addForceX(const Float force) {
             _thrusterForce += Vector2::xAxis(force);
         }
 
-        void addForceY(Float force) {
+        void addForceY(const Float force) {
             _thrusterForce += Vector2::yAxis(force);
         }
 

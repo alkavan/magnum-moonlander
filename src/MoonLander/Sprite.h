@@ -13,7 +13,7 @@ namespace Magnum::Game {
 
     class Sprite {
     private:
-        Shaders::Flat2D &_shader;
+        Shaders::FlatGL2D &_shader;
         GL::Texture2D &_texture;
         GL::Mesh &_mesh;
 
@@ -24,7 +24,7 @@ namespace Magnum::Game {
         Vector2i _gridSize = Vector2i{1, 1};
 
     public:
-        Sprite(Shaders::Flat2D &shader, GL::Texture2D &texture, GL::Mesh &mesh, const Vector2i &frameSize):
+        Sprite(Shaders::FlatGL2D &shader, GL::Texture2D &texture, GL::Mesh &mesh, const Vector2i &frameSize):
         _shader(shader), _texture(texture), _mesh(mesh), _frameSize(frameSize) {
 
 
@@ -36,10 +36,8 @@ namespace Magnum::Game {
         }
 
         void setFrameIndex(Int frameIndex) {
-
-            auto maxFrameIndex = _frameCount-1;
-            if( frameIndex > maxFrameIndex ) {
-                Utility::Error() << "unable to set frame index" << frameIndex
+            if(const auto maxFrameIndex = _frameCount-1; frameIndex > maxFrameIndex ) {
+                Error() << "unable to set frame index" << frameIndex
                 << "last frame is" << maxFrameIndex << "(fallback to 0)";
                 frameIndex = 0;
             }
@@ -59,10 +57,9 @@ namespace Magnum::Game {
             return _frameCount;
         }
 
-        void draw(const Matrix3 &cameraProjectionMatrix, const Matrix3 &objectTransformationMatrix) {
-
+        void draw(const Matrix3 &cameraProjectionMatrix, const Matrix3 &objectTransformationMatrix) const
+        {
             _shader.setTransformationProjectionMatrix(cameraProjectionMatrix*objectTransformationMatrix);
-
 
             _shader.setTextureMatrix(
                     Matrix3::scaling(1.0f/Vector2{_gridSize})*

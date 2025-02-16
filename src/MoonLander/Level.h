@@ -11,14 +11,14 @@
 #include "Game.h"
 #include "DrawableMesh.h"
 #include "Sprite.h"
-#include "Entity/Lander.h"
-#include "Entity/Box.h"
+#include "Lander.h"
+#include "Box.h"
 
 namespace Magnum::Game {
     using namespace Math::Literals;
-    using Corrade::Containers::Array;
-    using Corrade::Containers::arrayAppend;
-    using Corrade::Containers::Optional;
+    using Containers::Array;
+    using Containers::arrayAppend;
+    using Containers::Optional;
 
     class BodyDensity {
     // TODO: https://amesweb.info/Materials/Density-Materials.aspx
@@ -42,7 +42,7 @@ namespace Magnum::Game {
         b2BodyDef bodyDefinition;
 
         bodyDefinition.position.Set(transformation.translation().x(), transformation.translation().y());
-        bodyDefinition.angle = Float(transformation.rotation().angle());
+        bodyDefinition.angle = static_cast<Float>(transformation.rotation().angle());
         bodyDefinition.type = type;
 
         return bodyDefinition;
@@ -71,11 +71,11 @@ namespace Magnum::Game {
                                       const b2BodyType type,
                                       const Float density) {
 
-        b2BodyDef bodyDefinition = createBodyDefinition(transformation, type);
+        const b2BodyDef bodyDefinition = createBodyDefinition(transformation, type);
         b2Body *body = world.CreateBody(&bodyDefinition);
 
-        b2PolygonShape shape = bodyShape({size});
-        b2FixtureDef fixture = bodyFixtureDefinition(shape, density);
+        const b2PolygonShape shape = bodyShape({size});
+        const b2FixtureDef fixture = bodyFixtureDefinition(shape, density);
 
         body->CreateFixture(&fixture);
         body->GetUserData().pointer = reinterpret_cast<std::uintptr_t>(&object);
@@ -90,7 +90,7 @@ namespace Magnum::Game {
         Scene2D& _scene;
         b2World& _world;
 
-        Shaders::Flat2D _shader{};
+        Shaders::FlatGL2D _shader{};
         GL::Mesh _mesh{NoCreate};
 
         SceneGraph::DrawableGroup2D _boxGroup;
@@ -133,29 +133,35 @@ namespace Magnum::Game {
             camera.draw(_boxGroup);
         }
 
-        void addBox(DualComplex &transformation) {
-            auto box = newBox(_boxGroup, transformation, {0.5f, 0.5f}, 0xffff66_rgbf, 1.0f);
+        void addBox(const DualComplex &transformation) {
+            const auto box = newBox(
+                _boxGroup,
+                transformation,
+                {0.5f, 0.5f},
+                0xffff66_rgbf,
+                1.0f);
+
             arrayAppend(_boxes, box);
         };
     };
 
-    Box *Level::newBox(SceneGraph::DrawableGroup2D &drawable_group, DualComplex transformation,
-                       Vector2 size, Color4 color, Float density) {
-        auto object = new Object2D{&_scene};
+    inline Box *Level::newBox(SceneGraph::DrawableGroup2D &drawable_group, DualComplex transformation,
+                              Vector2 size, Color4 color, Float density) {
+        const auto object = new Object2D{&_scene};
         object->setScaling(size);
-        auto body = newWorldObjectBody(_world, *object, transformation, size, b2_dynamicBody, density);
-        auto drawable = new DrawableMesh{*object, _mesh, _shader, color, drawable_group};
+        const auto body = newWorldObjectBody(_world, *object, transformation, size, b2_dynamicBody, density);
+        const auto drawable = new DrawableMesh{*object, _mesh, _shader, color, drawable_group};
 
         return new Box{*object, *body, *drawable};
 
     }
 
-    Box *Level::newBoxStatic(SceneGraph::DrawableGroup2D &drawable_group, DualComplex transformation,
-                             Vector2 size, Color4 color) {
-        auto object = new Object2D{&_scene};
+    inline Box *Level::newBoxStatic(SceneGraph::DrawableGroup2D &drawable_group, DualComplex transformation,
+                                    Vector2 size, Color4 color) {
+        const auto object = new Object2D{&_scene};
         object->setScaling(size);
-        auto body = newWorldObjectBody(_world, *object, transformation, size, b2_staticBody, 1.0f);
-        auto drawable = new DrawableMesh{*object, _mesh, _shader, color, drawable_group};
+        const auto body = newWorldObjectBody(_world, *object, transformation, size, b2_staticBody, 1.0f);
+        const auto drawable = new DrawableMesh{*object, _mesh, _shader, color, drawable_group};
 
         return new Box{*object, *body, *drawable};
     }

@@ -11,12 +11,12 @@
 #include "Game.h"
 
 namespace Magnum::Game {
-    class DrawableMesh : SceneGraph::Drawable2D {
+    class DrawableMesh final : SceneGraph::Drawable2D {
     public:
         DrawableMesh(
                 Object2D &object,
                 GL::Mesh& mesh,
-                Shaders::Flat2D& shader,
+                Shaders::FlatGL2D& shader,
                 const Color4 &color,
                 SceneGraph::DrawableGroup2D &group
                 ) : SceneGraph::Drawable2D{object, &group},
@@ -32,7 +32,7 @@ namespace Magnum::Game {
 
     private:
         GL::Mesh& _mesh;
-        Shaders::Flat2D& _shader;
+        Shaders::FlatGL2D& _shader;
         Color4 _color;
     };
 }

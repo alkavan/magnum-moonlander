@@ -11,8 +11,8 @@ namespace Magnum::Game {
 
     class GravityConstant {
     public:
-        static inline const b2Vec2 earth = b2Vec2{0.0f, -9.81f};
-        static inline const b2Vec2 moon = b2Vec2{0.0f, -1.62f};
+        static inline const auto earth = b2Vec2{0.0f, -9.81f};
+        static inline const auto moon = b2Vec2{0.0f, -1.62f};
     };
 }
 

@@ -2,7 +2,7 @@
 #define MAGNUM_MOONLANDER_BOX_H
 
 #include <box2d/b2_body.h>
-#include "../Game.h"
+#include "Game.h"
 
 namespace Magnum::Game {
         class Box {
@@ -15,8 +15,8 @@ namespace Magnum::Game {
             _object(object), _body(body), _drawable(drawable) {}
 
             void update(const Float dt) {
-                (*reinterpret_cast<Object2D*>(_body.GetUserData().pointer))
-                        .setTranslation({_body.GetPosition().x, _body.GetPosition().y})
+                (reinterpret_cast<Object2D*>(_body.GetUserData().pointer))
+                        ->setTranslation({_body.GetPosition().x, _body.GetPosition().y})
                         .setRotation(Complex::rotation(Rad(_body.GetAngle())));
             }
         };

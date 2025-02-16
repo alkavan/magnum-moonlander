@@ -32,8 +32,8 @@ namespace Magnum::Game {
         };
 
         void addTexture(const std::string& key, const std::string& filename) {
-            Containers::Optional<Trade::ImageData2D> image = loadImage(filename);
-            Vector2i imageSize = image->size();
+            Optional<Trade::ImageData2D> image = loadImage(filename);
+            const Vector2i imageSize = image->size();
 
             GL::Texture2D texture;
             texture.setWrapping(GL::SamplerWrapping::ClampToEdge)
@@ -50,11 +50,11 @@ namespace Magnum::Game {
             return &_assets[key];
         }
 
-        Containers::Optional<Trade::ImageData2D> loadImage(const std::string& filename) {
+        Optional<Trade::ImageData2D> loadImage(const std::string& filename) {
             if(!_importer->openData(_resource.getRaw(filename)))
                 Fatal{} << "Can't open image file with AnyImageImporter";
 
-            Containers::Optional<Trade::ImageData2D> image = _importer->image2D(0);
+            Optional<Trade::ImageData2D> image = _importer->image2D(0);
             CORRADE_INTERNAL_ASSERT(image);
 
             return image;
