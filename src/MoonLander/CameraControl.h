@@ -44,7 +44,7 @@ namespace Magnum::Game {
 
         void updateProjection() const;
 
-        /// Mark that the zoom is being adjusted by velocity
+        /// Mark that velocity is adjusting the zoom
         void startZoomingByVelocity();
 
         /// Mark that zooming by velocity has stopped
@@ -54,7 +54,7 @@ namespace Magnum::Game {
         [[nodiscard]] bool isZoomingByVelocity() const;
 
         /**
-         * @brief Checks if the current zoom level is sufficiently close to the zoom anchor.
+         * @brief Checks if the current zoom level is close enough to the zoom anchor.
          * @param epsilon Precision threshold to determine closeness.
          * @return True if zoom is close to the anchor within the given epsilon, false otherwise.
          */
@@ -64,7 +64,7 @@ namespace Magnum::Game {
         SceneGraph::Camera2D *_camera;
         Object2D *_cameraObject;
 
-        Vector2 _zoom;
+        Vector2 _zoom {1.0f, 1.0f};
         Vector2 _zoomMax = {100.0f, 100.0f};
         Vector2 _zoomMin = {0.0f, 0.0f};
         Vector2 _zoomStep = {5.0f, 5.0f};

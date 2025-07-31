@@ -21,7 +21,6 @@ namespace Magnum::Game {
     using Containers::Optional;
 
     class BodyDensity {
-    // TODO: https://amesweb.info/Materials/Density-Materials.aspx
     public:
         static constexpr Float aluminum = Float{168.6f};
         static constexpr Float steel = Float{490.7f};
@@ -35,60 +34,44 @@ namespace Magnum::Game {
 
     class ObjectDefault {
     public:
-        static inline const Color4 color = 0xcccccc_rgbf;
+        static constexpr Color4 color = 0xcccccc_rgbf;
     };
 
-    inline b2BodyDef createBodyDefinition(const DualComplex &transformation, const b2BodyType type) {
-        b2BodyDef bodyDefinition;
-
-        bodyDefinition.position.Set(transformation.translation().x(), transformation.translation().y());
-        bodyDefinition.angle = static_cast<Float>(transformation.rotation().angle());
+    inline b2BodyId newWorldObjectBody(
+        const b2WorldId worldId,
+        Object2D *object,
+        const DualComplex &transformation,
+        const Vector2 &size,
+        const b2BodyType type,
+        const Float density
+        )
+    {
+        b2BodyDef bodyDefinition = b2DefaultBodyDef();
+        bodyDefinition.position = b2Vec2{transformation.translation().x(), transformation.translation().y()};
+        const auto angle = transformation.rotation().angle();
+        bodyDefinition.rotation = b2Rot{Math::cos(angle), Math::sin(angle)};
         bodyDefinition.type = type;
 
-        return bodyDefinition;
+        const b2BodyId bodyId = b2CreateBody(worldId, &bodyDefinition);
+        b2Body_SetUserData(bodyId, object);
+
+        // bodies.emplace(bodyId, bodyDefinition);
+
+        const b2Polygon shape = b2MakeBox(size.x(), size.y());
+        const b2ShapeDef shapeDef = b2DefaultShapeDef();
+        // Set friction after shape creation
+
+        const b2ShapeId shapeId = b2CreatePolygonShape(bodyId, &shapeDef, &shape);
+        b2Shape_SetFriction(shapeId, BodyDefault::friction);
+        b2Shape_SetDensity(shapeId, density, true);
+
+        return bodyId;
     }
 
-    inline b2FixtureDef bodyFixtureDefinition(const b2PolygonShape &shape, const Float density) {
-        b2FixtureDef fixture;
-
-        fixture.friction = BodyDefault::friction;
-        fixture.density = density;
-        fixture.shape = &shape;
-
-        return fixture;
-    }
-
-    inline b2PolygonShape bodyShape(const Vector2 size) {
-        b2PolygonShape shape;
-        shape.SetAsBox(size.x(), size.y());
-        return shape;
-    }
-
-    inline b2Body* newWorldObjectBody(b2World& world,
-                                      Object2D &object,
-                                      const DualComplex &transformation,
-                                      const Vector2 &size,
-                                      const b2BodyType type,
-                                      const Float density) {
-
-        const b2BodyDef bodyDefinition = createBodyDefinition(transformation, type);
-        b2Body *body = world.CreateBody(&bodyDefinition);
-
-        const b2PolygonShape shape = bodyShape({size});
-        const b2FixtureDef fixture = bodyFixtureDefinition(shape, density);
-
-        body->CreateFixture(&fixture);
-        body->GetUserData().pointer = reinterpret_cast<std::uintptr_t>(&object);
-        // for new box2d version
-//        body->SetUserData(&object);
-
-        return body;
-    }
 
     class Level {
     private:
         Scene2D& _scene;
-        b2World& _world;
 
         Shaders::FlatGL2D _shader{};
         GL::Mesh _mesh{NoCreate};
@@ -96,10 +79,11 @@ namespace Magnum::Game {
         SceneGraph::DrawableGroup2D _boxGroup;
         SceneGraph::DrawableGroup2D _groundGroup;
 
+        b2WorldId _worldId;
         Array<Box*> _boxes{0};
         Optional<Box*> _ground{};
     public:
-        Level(Scene2D &scene, b2World &world): _scene(scene), _world(world) {
+        Level(Scene2D &scene, const b2WorldId worldId): _scene(scene), _worldId(worldId) {
             _mesh = MeshTools::compile(Primitives::squareSolid());
         }
 
@@ -123,7 +107,7 @@ namespace Magnum::Game {
                 _ground.operator*()->update(dt);
             }
 
-            for (auto &box : _boxes) {
+            for (const auto &box : _boxes) {
                 box->update(dt);
             }
         }
@@ -145,25 +129,24 @@ namespace Magnum::Game {
         };
     };
 
-    inline Box *Level::newBox(SceneGraph::DrawableGroup2D &drawable_group, DualComplex transformation,
-                              Vector2 size, Color4 color, Float density) {
+    inline Box *Level::newBox(SceneGraph::DrawableGroup2D &drawable_group, const DualComplex transformation,
+                              const Vector2 size, const Color4 color, const Float density) {
         const auto object = new Object2D{&_scene};
         object->setScaling(size);
-        const auto body = newWorldObjectBody(_world, *object, transformation, size, b2_dynamicBody, density);
+        const auto bodyId = newWorldObjectBody(_worldId, object, transformation, size, b2_dynamicBody, density);
         const auto drawable = new DrawableMesh{*object, _mesh, _shader, color, drawable_group};
 
-        return new Box{*object, *body, *drawable};
-
+        return new Box{*object, bodyId, *drawable};
     }
 
-    inline Box *Level::newBoxStatic(SceneGraph::DrawableGroup2D &drawable_group, DualComplex transformation,
-                                    Vector2 size, Color4 color) {
+    inline Box *Level::newBoxStatic(SceneGraph::DrawableGroup2D &drawable_group, const DualComplex transformation,
+                                    const Vector2 size, const Color4 color) {
         const auto object = new Object2D{&_scene};
         object->setScaling(size);
-        const auto body = newWorldObjectBody(_world, *object, transformation, size, b2_staticBody, 1.0f);
+        const auto bodyId = newWorldObjectBody(_worldId, object, transformation, size, b2_staticBody, 1.0f);
         const auto drawable = new DrawableMesh{*object, _mesh, _shader, color, drawable_group};
 
-        return new Box{*object, *body, *drawable};
+        return new Box{*object, bodyId, *drawable};
     }
 }
 

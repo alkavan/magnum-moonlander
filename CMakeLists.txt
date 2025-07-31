@@ -27,7 +27,7 @@ find_package(Magnum CONFIG REQUIRED
 
 find_package(MagnumExtras REQUIRED Ui)
 
-find_package(Box2D CONFIG REQUIRED)
+find_package(Box2D 3.0 CONFIG REQUIRED)
 find_package(OpenAL CONFIG REQUIRED)
 
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)

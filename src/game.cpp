@@ -38,7 +38,7 @@ namespace Magnum::Game {
      */
     class MoonLander final : public Platform::Application {
     public:
-        virtual ~MoonLander() = default;
+        ~MoonLander();
         explicit MoonLander(const Arguments &arguments);
 
     private:
@@ -57,7 +57,6 @@ namespace Magnum::Game {
         AssetManager _asset;
 
         Optional<CameraControl> _cc;
-        Optional<b2World> _world;
 
         Shaders::FlatGL2D _spriteShader{NoCreate};
 
@@ -74,7 +73,20 @@ namespace Magnum::Game {
         GL::Mesh _engineEffectSpriteMesh{NoCreate};
 
         Containers::Pointer<SpriteAnimation> _engineEffectAnimation;
+
+        b2WorldId _worldId{};
+        b2BodyId _landerBodyId{};
     };
+
+    MoonLander::~MoonLander() {
+        // Clean up Box2D resources
+        if (_level) {
+            _level.reset(nullptr);
+        }
+
+        // Destroy the Box2D world
+        b2DestroyWorld(_worldId);
+    }
 
     MoonLander::MoonLander(const Arguments &arguments) : Platform::Application{arguments, NoCreate} {
         Utility::Arguments args;
@@ -117,11 +129,13 @@ namespace Magnum::Game {
         // setup camera control
         _cc.emplace(CameraControl{new Object2D{&_scene}});
 
-        // create Box2D world with the usual gravity vector
-        _world.emplace(GravityConstant::moon);
+        // create box2d world with gravity vector
+        auto worldDef = b2DefaultWorldDef();
+        worldDef.gravity = GravityConstant::Moon;
+        _worldId = b2CreateWorld(&worldDef);
 
         // create and initialize level
-        _level.emplace(_scene, *_world);
+        _level.emplace(_scene, _worldId);
         _level->initialize();
 
         // create mesh for sprites
@@ -148,13 +162,14 @@ namespace Magnum::Game {
             _landerObject.emplace(&_scene);
             _landerObject->setScaling(landerScale);
 
-            auto landerBody = newWorldObjectBody(
-                *_world,
-                *_landerObject,
+            _landerBodyId = newWorldObjectBody(
+                _worldId,
+                _landerObject.get(),
                 transformation,
                 landerScale,
                 b2_dynamicBody,
-                2.0);
+                2.0
+                );
 
             _landerSprite.emplace(_spriteShader, *landerTexture, _landerSpriteMesh, Vector2i{20, 20});
 
@@ -167,7 +182,7 @@ namespace Magnum::Game {
             _engineEffectAnimation.emplace(*_engineEffectSprite, 0.1f);
 
             // lander
-            _lander.emplace(*_landerObject, *landerBody, *_landerSprite, *_engineEffectSprite, *_engineEffectAnimation);
+            _lander.emplace(*_landerObject, *_landerSprite, *_engineEffectSprite, *_engineEffectAnimation);
         }
 
         _engineEffectAnimation->start();
@@ -298,88 +313,33 @@ namespace Magnum::Game {
         redraw();
     }
 
-    void MoonLander::tickEvent() {
+    void MoonLander::tickEvent()
+    {
         _timeline.nextFrame();
         const auto dt = _timeline.previousFrameDuration();
 
         // step the world and update all object positions
-        _world->Step(dt, 6, 2);
-
-        // update
-        // _cc->updateProjection();
+        b2World_Step(_worldId, dt, 6);
 
         _engineEffectAnimation->tick();
 
         _level->update(dt);
 
         if(_lander) {
-            _lander->update(dt);
+            _lander->update(dt, _landerBodyId);
         }
 
         // move camera to lander position
-        // const auto landerPosition = Vector2{
-            // _lander->getBody().GetPosition().x,
-            // _lander->getBody().GetPosition().y
-        // };
-
+        // const auto [landerX, landerY] = b2Body_GetPosition(_landerBodyId);
+        // const auto landerPosition = Vector2{landerX, landerY};
         // _cc->moveTo(landerPosition);
 
-        const Vector2 shipPosition = _lander->getObject().translation();
-        const Vector2 screenCenter = Vector2{windowSize()} / 2.0f;
-        UpdateZoomByDistance(*_cc, shipPosition, screenCenter);
+        // update
+        _cc->updateProjection();
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        // Handle zooming by lander velocity
-        //
-        // const Vector2 landerVelocity = _lander->getVelocity();
-        //
-        // // Stop zooming by velocity when sufficiently close to the anchor
-        // if (_cc->isZoomingByVelocity() && _cc->isZoomCloseToAnchor(0.01f)) {
-        //     _cc->stopZoomingByVelocity();
-        //     // todo: set to anchor.
-        // }
-        //
-        // if (const float velocityMagnitude = std::abs(landerVelocity.y()); velocityMagnitude >= 0.1f) {
-        //     if (!_cc->isZoomingByVelocity()) {
-        //         _cc->startZoomingByVelocity();
-        //     }
-        //
-        //     // Zoom OUT (reduce zoom) proportional to velocity
-        //     const auto zoomAdjustment = Vector2{velocityMagnitude * 0.5f + 0.1f, velocityMagnitude * 0.5f + 0.1f};
-        //     _cc->zoomOut(zoomAdjustment);
-        // } else {
-        //     if (!_cc->isZoomingByVelocity()) {
-        //         _cc->startZoomingByVelocity();
-        //     }//
-        //
-        //     constexpr float minimumZoomIncrement = 0.01f;
-        //     // Zoom IN (increase zoom) faster when nearly stationary
-        //     const float fastZoomAdjustment = std::max((0.1f - velocityMagnitude) * 2.0f, minimumZoomIncrement);
-        //     // _cc->zoomIn(Vector2{fastZoomAdjustment, fastZoomAdjustment});
-        //     _cc->zoomToAnchor(Vector2{fastZoomAdjustment, fastZoomAdjustment});
-        // }
-    }
-
-    // Static function to adjust zoom dynamically based on ship positions
-    static void UpdateZoomByDistance(CameraControl& cameraControl, const Vector2 p1, const Vector2 p2) {
-        // Calculate the Euclidean distance between the two points (p1 and p2)
-        const float distance = Math::Distance::pointPoint(p2, p1);
-        Debug() << "distance: " << distance;
-        // Define zoom factor based on the distance
-        // Vector2 targetZoom = cameraControl.getZoomAnchor(); // Default to anchor zoom
-
-
-        if (distance > 0.0f) {
-            cameraControl.zoomToMax(Vector2(distance * 0.001f));
-            // targetZoom += Vector2(distance * 0.1f); // Scale zoom based on distance
-        }
-
-        // Clamp the target zoom between the minimum and maximum allowed zooms
-        // targetZoom = clamp(targetZoom, cameraControl.getZoomMin(), cameraControl.getZoomMax());
-
-        // Set the camera's zoom to the clamped value
-        // cameraControl.setZoom(targetZoom);
+        // const Vector2 shipPosition = _lander->getObject().translation();
+        // const Vector2 screenCenter = Vector2{windowSize()} / 2.0f;
+        // UpdateZoomByDistance(*_cc, shipPosition, screenCenter);
     }
 }
 

@@ -9,7 +9,6 @@ namespace Magnum::Game {
     class Lander {
     private:
         Object2D &_object;
-        b2Body &_body;
         Sprite &_landerSprite;
         Sprite &_engineEffectSprite;
         SpriteAnimation &_engineEffectAnimation;
@@ -18,26 +17,24 @@ namespace Magnum::Game {
         Vector2 _thrusterForce = {0.0f, 0.0f};
         Vector2 _thrusterImpulse = {0.0f, 0.0f};
 
-        void thrusterForceToCenter(Vector2 force) const
+        void thrusterForceToCenter(Vector2 force, const b2BodyId bodyId) const
         {
-            _body.ApplyForceToCenter(b2Vec2{force.x(), force.y()}, true);
+            b2Body_ApplyForceToCenter(bodyId, b2Vec2{force.x(), force.y()}, true);
         }
 
-        void thrusterImpulseToCenter(Vector2 force) const
+        void thrusterImpulseToCenter(Vector2 force, const b2BodyId bodyId) const
         {
-            _body.ApplyLinearImpulseToCenter(b2Vec2{force.x() / 10.0f, force.y() / 10.0f}, true);
+            b2Body_ApplyLinearImpulseToCenter(bodyId, b2Vec2{force.x() / 10.0f, force.y() / 10.0f}, true);
         }
 
     public:
         Lander(
             Object2D &object,
-            b2Body &body,
             Sprite &landerSprite,
             Sprite &engineEffectSprite,
             SpriteAnimation &engineEffectAnimation
             ):
         _object(object),
-        _body(body),
         _landerSprite(landerSprite),
         _engineEffectSprite(engineEffectSprite),
         _engineEffectAnimation(engineEffectAnimation) {}
@@ -46,23 +43,17 @@ namespace Magnum::Game {
             return _object;
         }
 
-        [[nodiscard]] b2Body &getBody() const {
-            return _body;
-        }
-
-        [[nodiscard]] Vector2 getVelocity() const {
-            auto velocity = _body.GetLinearVelocity();
-            return {velocity.x, velocity.y};
-        }
-
-        void update(const Float dt) const
+        void update(const Float dt, const b2BodyId bodyId) const
         {
-            thrusterForceToCenter(_thrusterForce/dt);
-//            thrusterImpulseToCenter(_thrusterImpulse/dt);
+            thrusterForceToCenter(_thrusterForce/dt, bodyId);
+            // thrusterImpulseToCenter(_thrusterImpulse/dt);
 
-            (*reinterpret_cast<Object2D*>(_body.GetUserData().pointer))
-                    .setTranslation({_body.GetPosition().x, _body.GetPosition().y})
-                    .setRotation(Complex::rotation(Rad(_body.GetAngle())));
+            auto [x, y] = b2Body_GetPosition(bodyId);
+            const Float angle = b2Rot_GetAngle(b2Body_GetRotation(bodyId));
+
+            (static_cast<Object2D*>(b2Body_GetUserData(bodyId)))
+            ->setTranslation({x, y}).setRotation(Complex::rotation(Rad{angle}));
+
         }
 
         void addForceX(const Float force) {

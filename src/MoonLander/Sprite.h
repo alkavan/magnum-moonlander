@@ -6,7 +6,7 @@
 #include <Magnum/Shaders/Flat.h>
 #include <Magnum/Timeline.h>
 #include <Magnum/Animation/Track.h>
-#include <Magnum/Trade/MeshData2D.h>
+#include <Magnum/Trade/MeshData.h>
 #include <Magnum/Math/Color.h>
 
 namespace Magnum::Game {
