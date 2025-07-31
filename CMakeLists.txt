@@ -27,7 +27,23 @@ find_package(Magnum CONFIG REQUIRED
 
 find_package(MagnumExtras REQUIRED Ui)
 
-find_package(Box2D CONFIG REQUIRED)
+include(FetchContent)
+FetchContent_Declare(
+        box2d
+        GIT_REPOSITORY https://github.com/erincatto/box2d.git
+        GIT_TAG v3.1.1
+        GIT_SHALLOW TRUE
+)
+set(BOX2D_SAMPLES OFF CACHE BOOL "" FORCE)
+set(BOX2D_UNIT_TESTS OFF CACHE BOOL "" FORCE)
+set(BOX2D_BENCHMARKS OFF CACHE BOOL "" FORCE)
+set(BOX2D_DOCS OFF CACHE BOOL "" FORCE)
+set(BOX2D_PROFILE OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(box2d)
+if(NOT TARGET box2d::box2d)
+    add_library(box2d::box2d ALIAS box2d)
+endif()
+
 find_package(OpenAL CONFIG REQUIRED)
 
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
@@ -60,13 +76,5 @@ target_link_libraries(lander PRIVATE
         Magnum::Trade
         MagnumExtras::Ui
         OpenAL::OpenAL
+        box2d::box2d
 )
-
-# Link Box2D
-if (WIN32)  # Windows
-    target_link_libraries(lander PRIVATE box2d::box2d)
-else()      # Linux and Mac
-    target_link_libraries(lander PRIVATE Box2D::Box2D)
-endif (WIN32)
-
-#install(TARGETS lander DESTINATION ${MAGNUM_BINARY_INSTALL_DIR})
