@@ -175,8 +175,8 @@ namespace Magnum::Game {
         setSwapInterval(1);
 #if !defined(CORRADE_TARGET_EMSCRIPTEN) && !defined(CORRADE_TARGET_ANDROID)
         setMinimalLoopPeriod(16.0_msec);
-        _timeline.start();
 #endif
+        _timeline.start();
     }
 
     void MoonLander::pointerMoveEvent(PointerMoveEvent &event) {
