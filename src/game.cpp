@@ -1,4 +1,5 @@
 #include <Corrade/Utility/Arguments.h>
+#include <set>
 
 #include <Magnum/GL/Context.h>
 #include <Magnum/GL/DefaultFramebuffer.h>
@@ -76,6 +77,7 @@ namespace Magnum::Game {
 
         b2WorldId _worldId{};
         b2BodyId _landerBodyId{};
+        std::set<Key> _pressedKeys;
     };
 
     MoonLander::~MoonLander() {
@@ -232,63 +234,51 @@ namespace Magnum::Game {
         _cc->OnKeyPressEvent(event);
 
         // exit game
-        if(event.key() == Key::Esc) {
+        if (event.key() == Key::Esc) {
             event.setAccepted(true);
             exit();
         }
 
-        // forward
-        if(event.key() == Key::W) {
-            _lander->addForceY(_engineForceStep);
+        bool handled = false;
+        if (event.key() == Key::W) { _pressedKeys.insert(Key::W); handled = true; }
+        else if (event.key() == Key::S) { _pressedKeys.insert(Key::S); handled = true; }
+        else if (event.key() == Key::D) { _pressedKeys.insert(Key::D); handled = true; }
+        else if (event.key() == Key::A) { _pressedKeys.insert(Key::A); handled = true; }
+
+        if (handled) {
+            _lander->resetForceY();
+            _lander->resetForceX();
+            if (_pressedKeys.count(Key::W)) _lander->addForceY(_engineForceStep);
+            if (_pressedKeys.count(Key::S)) _lander->addForceY(-_engineForceStep);
+            if (_pressedKeys.count(Key::D)) _lander->addForceX(_engineForceStep);
+            if (_pressedKeys.count(Key::A)) _lander->addForceX(-_engineForceStep);
             event.setAccepted(true);
         }
 
-        // backward
-        if(event.key() == Key::S) {
-            _lander->addForceY(-_engineForceStep);
-            event.setAccepted(true);
-        }
-
-        // right
-        if(event.key() == Key::D) {
-            _lander->addForceX(_engineForceStep);
-            event.setAccepted(true);
-        }
-
-        // left
-        if(event.key() == Key::A) {
-            _lander->addForceX(-_engineForceStep);
-            event.setAccepted(true);
-        }
-
-        if( ! event.isAccepted()) {
+        if (!event.isAccepted()) {
             Debug{} << "unhandled key press: " << event.keyName();
             event.setAccepted(true);
         }
     }
 
     void MoonLander::keyReleaseEvent(KeyEvent &event) {
-        if(event.key() == Key::W) {
+        bool handled = false;
+        if (event.key() == Key::W) { _pressedKeys.erase(Key::W); handled = true; }
+        else if (event.key() == Key::S) { _pressedKeys.erase(Key::S); handled = true; }
+        else if (event.key() == Key::D) { _pressedKeys.erase(Key::D); handled = true; }
+        else if (event.key() == Key::A) { _pressedKeys.erase(Key::A); handled = true; }
+
+        if (handled) {
             _lander->resetForceY();
-            event.setAccepted(true);
-        }
-
-        if(event.key() == Key::S) {
-            _lander->resetForceY();
-            event.setAccepted(true);
-        }
-
-        if(event.key() == Key::D) {
             _lander->resetForceX();
+            if (_pressedKeys.count(Key::W)) _lander->addForceY(_engineForceStep);
+            if (_pressedKeys.count(Key::S)) _lander->addForceY(-_engineForceStep);
+            if (_pressedKeys.count(Key::D)) _lander->addForceX(_engineForceStep);
+            if (_pressedKeys.count(Key::A)) _lander->addForceX(-_engineForceStep);
             event.setAccepted(true);
         }
 
-        if(event.key() == Key::A) {
-            _lander->resetForceX();
-            event.setAccepted(true);
-        }
-
-        if( ! event.isAccepted()) {
+        if (!event.isAccepted()) {
             Debug{} << "unhandled key release: " << event.keyName();
             event.setAccepted(true);
         }
