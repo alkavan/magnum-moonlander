@@ -1,16 +1,13 @@
-#ifndef MAGNUM_MOONLANDER_SPRITE_H
-#define MAGNUM_MOONLANDER_SPRITE_H
+#ifndef MOONLANDER_SPRITE_H
+#define MOONLANDER_SPRITE_H
 
 #include <Magnum/GL/Texture.h>
-#include <Magnum/GL/Sampler.h>
 #include <Magnum/Shaders/Flat.h>
 #include <Magnum/Timeline.h>
 #include <Magnum/Animation/Track.h>
-#include <Magnum/Trade/MeshData.h>
 #include <Magnum/Math/Color.h>
 
-namespace Magnum::Game {
-
+namespace MoonLander {
     class Sprite {
     private:
         Shaders::FlatGL2D &_shader;
@@ -24,10 +21,8 @@ namespace Magnum::Game {
         Vector2i _gridSize = Vector2i{1, 1};
 
     public:
-        Sprite(Shaders::FlatGL2D &shader, GL::Texture2D &texture, GL::Mesh &mesh, const Vector2i &frameSize):
-        _shader(shader), _texture(texture), _mesh(mesh), _frameSize(frameSize) {
-
-
+        Sprite(Shaders::FlatGL2D &shader, GL::Texture2D &texture, GL::Mesh &mesh,
+               const Vector2i &frameSize) : _shader(shader), _texture(texture), _mesh(mesh), _frameSize(frameSize) {
             auto imageSize = _texture.imageSize(0);
 
             _gridSize.x() = imageSize.x() / _frameSize.x();
@@ -36,9 +31,9 @@ namespace Magnum::Game {
         }
 
         void setFrameIndex(Int frameIndex) {
-            if(const auto maxFrameIndex = _frameCount-1; frameIndex > maxFrameIndex ) {
+            if (const auto maxFrameIndex = _frameCount - 1; frameIndex > maxFrameIndex) {
                 Error() << "unable to set frame index" << frameIndex
-                << "last frame is" << maxFrameIndex << "(fallback to 0)";
+                        << "last frame is" << maxFrameIndex << "(fallback to 0)";
                 frameIndex = 0;
             }
 
@@ -49,7 +44,7 @@ namespace Magnum::Game {
             return _frameIndex;
         }
 
-        [[nodiscard]]  Int& getFrameIndexRef() {
+        [[nodiscard]] Int &getFrameIndexRef() {
             return _frameIndex;
         }
 
@@ -57,18 +52,16 @@ namespace Magnum::Game {
             return _frameCount;
         }
 
-        void draw(const Matrix3 &cameraProjectionMatrix, const Matrix3 &objectTransformationMatrix) const
-        {
-            _shader.setTransformationProjectionMatrix(cameraProjectionMatrix*objectTransformationMatrix);
+        void draw(const Matrix3 &cameraProjectionMatrix, const Matrix3 &objectTransformationMatrix) const {
+            _shader.setTransformationProjectionMatrix(cameraProjectionMatrix * objectTransformationMatrix);
 
             _shader.setTextureMatrix(
-                    Matrix3::scaling(1.0f/Vector2{_gridSize})*
-                    Matrix3::translation(Vector2{Vector2i{_frameIndex, 0}}));
+                Matrix3::scaling(1.0f / Vector2{_gridSize}) *
+                Matrix3::translation(Vector2{Vector2i{_frameIndex, 0}}));
 
             _shader.bindTexture(_texture).draw(_mesh);
         }
     };
 }
 
-
-#endif //MAGNUM_MOONLANDER_SPRITE_H
+#endif //MOONLANDER_SPRITE_H

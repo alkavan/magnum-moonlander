@@ -1,20 +1,22 @@
-#ifndef MAGNUM_MOONLANDER_LEVEL_H
-#define MAGNUM_MOONLANDER_LEVEL_H
+#ifndef MOONLANDER_LEVEL_H
+#define MOONLANDER_LEVEL_H
 
 #include <box2d/box2d.h>
 #include <Magnum/Math/DualComplex.h>
 #include <Magnum/Shaders/Flat.h>
 #include <Magnum/MeshTools/Compile.h>
+#include <Magnum/Primitives/Square.h>
+#include <Magnum/Trade/MeshData.h>
 #include <Magnum/SceneGraph/Drawable.h>
 #include <Corrade/Containers/GrowableArray.h>
 
-#include "Game.h"
+#include "MoonLander.h"
 #include "DrawableMesh.h"
 #include "Sprite.h"
 #include "Lander.h"
 #include "Box.h"
 
-namespace Magnum::Game {
+namespace MoonLander {
     using namespace Math::Literals;
     using Containers::Array;
     using Containers::arrayAppend;
@@ -44,12 +46,14 @@ namespace Magnum::Game {
         const Vector2 &size,
         const b2BodyType type,
         const Float density
-        )
-    {
+    ) {
         b2BodyDef bodyDefinition = b2DefaultBodyDef();
-        bodyDefinition.position = b2Vec2{transformation.translation().x(), transformation.translation().y()};
+        bodyDefinition.position = b2Vec2{
+            .x = transformation.translation().x(),
+            .y = transformation.translation().y()
+        };
         const auto angle = transformation.rotation().angle();
-        bodyDefinition.rotation = b2Rot{Math::cos(angle), Math::sin(angle)};
+        bodyDefinition.rotation = b2Rot{.c = Math::cos(angle), .s = Math::sin(angle)};
         bodyDefinition.type = type;
 
         const b2BodyId bodyId = b2CreateBody(worldId, &bodyDefinition);
@@ -71,7 +75,7 @@ namespace Magnum::Game {
 
     class Level {
     private:
-        Scene2D& _scene;
+        Scene2D &_scene;
 
         Shaders::FlatGL2D _shader{};
         GL::Mesh _mesh{NoCreate};
@@ -80,10 +84,11 @@ namespace Magnum::Game {
         SceneGraph::DrawableGroup2D _groundGroup;
 
         b2WorldId _worldId;
-        Array<Box*> _boxes{0};
-        Optional<Box*> _ground{};
+        Array<Box *> _boxes{0};
+        Optional<Box *> _ground{};
+
     public:
-        Level(Scene2D &scene, const b2WorldId worldId): _scene(scene), _worldId(worldId) {
+        Level(Scene2D &scene, const b2WorldId worldId) : _scene(scene), _worldId(worldId) {
             _mesh = MeshTools::compile(Primitives::squareSolid());
         }
 
@@ -96,18 +101,18 @@ namespace Magnum::Game {
 
         void initialize() {
             _ground = newBoxStatic(
-                    _groundGroup,
-                    DualComplex::translation(Vector2::yAxis(-10.0f)),
-                    {20.0f, 1.0f},
-                    0xa5c9ea_rgbf);
+                _groundGroup,
+                DualComplex::translation(Vector2::yAxis(-10.0f)),
+                {20.0f, 1.0f},
+                0xa5c9ea_rgbf);
         }
 
         void update(const Float dt) {
-            if(_ground) {
+            if (_ground) {
                 _ground.operator*()->update(dt);
             }
 
-            for (const auto &box : _boxes) {
+            for (const auto &box: _boxes) {
                 box->update(dt);
             }
         }
@@ -150,4 +155,4 @@ namespace Magnum::Game {
     }
 }
 
-#endif //MAGNUM_MOONLANDER_LEVEL_H
+#endif //MOONLANDER_LEVEL_H

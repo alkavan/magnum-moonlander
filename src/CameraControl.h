@@ -1,13 +1,11 @@
-#ifndef MAGNUM_MOONLANDER_CAMERACONTROL_H
-#define MAGNUM_MOONLANDER_CAMERACONTROL_H
+#ifndef MOONLANDER_CAMERACONTROL_H
+#define MOONLANDER_CAMERACONTROL_H
 
+#include <Magnum/Platform/Sdl2Application.h>
 #include <Magnum/SceneGraph/Camera.h>
 
-#include "Game.h"
-
-namespace Magnum::Game {
+namespace MoonLander {
     using namespace Math::Literals;
-    using Platform::Sdl2Application;
 
     class CameraControl {
     public:
@@ -39,8 +37,8 @@ namespace Magnum::Game {
         void zoomToAnchor(Vector2 zoomDiff);
 
         // events
-        void OnScrollEvent(Sdl2Application::ScrollEvent &event);
-        void OnKeyPressEvent(Sdl2Application::KeyEvent &event);
+        void OnScrollEvent(Platform::Sdl2Application::ScrollEvent &event);
+        void OnKeyPressEvent(Platform::Sdl2Application::KeyEvent &event);
 
         void updateProjection() const;
 
@@ -281,7 +279,7 @@ namespace Magnum::Game {
         return _cameraObject->translation();
     }
 
-    inline void CameraControl::OnScrollEvent(Sdl2Application::ScrollEvent& event)
+    inline void CameraControl::OnScrollEvent(Platform::Sdl2Application::ScrollEvent& event)
     {
         if(_disableInput) {
             return;
@@ -300,7 +298,7 @@ namespace Magnum::Game {
         event.setAccepted(true);
     }
 
-    inline void CameraControl::OnKeyPressEvent(Sdl2Application::KeyEvent &event)
+    inline void CameraControl::OnKeyPressEvent(Platform::Sdl2Application::KeyEvent &event)
     {
         if(_disableInput) {
             return;
@@ -311,12 +309,12 @@ namespace Magnum::Game {
             return;
         }
 
-        if(event.key() == Sdl2Application::Key::Equal) {
+        if(event.key() == Platform::Sdl2Application::Key::Equal) {
             zoomIn(_zoomStep*2);
             event.setAccepted(true);
         }
 
-        if(event.key() == Sdl2Application::Key::Minus) {
+        if(event.key() == Platform::Sdl2Application::Key::Minus) {
             zoomOut(_zoomStep*2);
             event.setAccepted(true);
         }
@@ -332,4 +330,5 @@ namespace Magnum::Game {
     }
 
 }
-#endif //MAGNUM_MOONLANDER_CAMERACONTROL_H
+
+#endif //MOONLANDER_CAMERACONTROL_H

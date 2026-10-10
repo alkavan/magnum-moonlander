@@ -11,39 +11,46 @@
 #include <Magnum/Shaders/Flat.h>
 #include <Magnum/Platform/Sdl2Application.h>
 #include <Magnum/Primitives/Square.h>
+#include <Magnum/Trade/MeshData.h>
+#include <Magnum/MeshTools/Compile.h>
 
-#include "MoonLander/Game.h"
-#include "MoonLander/Level.h"
-#include "MoonLander/CameraControl.h"
-#include "MoonLander/AssetManager.h"
-#include "MoonLander/Sprite.h"
-#include "MoonLander/SpriteAnimation.h"
+#include "MoonLander.h"
+#include "Level.h"
+#include "CameraControl.h"
+#include "AssetManager.h"
+#include "Sprite.h"
+#include "SpriteAnimation.h"
 
 #include <version_config.h>
 
-namespace Magnum::Game {
+namespace {
+    using namespace Magnum;
     using namespace Math::Literals;
+    using namespace MoonLander;
 
     static void UpdateZoomByDistance(CameraControl& cameraControl, Vector2 p1, Vector2 p2);
 
     constexpr Float _engineForceStep = 1.0f;
 
-    Vector2 _previousPointerPosition = {0.0f, 0.0f};
-    Float _previousVelocityMagnitude = 0.0f;
+    static Vector2 _previousPointerPosition = {0.0f, 0.0f};
+    static Float _previousVelocityMagnitude = 0.0f;
 
     /**
      * Represents the MoonLander application, inheriting from Platform::Application.
      * This class manages the main game logic, rendering, and input handling
      * for the MoonLander game.
      */
-    class MoonLander final : public Platform::Application {
+    class MoonLanderGame final : public Platform::Application {
     public:
-        ~MoonLander();
-        explicit MoonLander(const Arguments &arguments);
+        ~MoonLanderGame();
+        explicit MoonLanderGame(const Arguments &arguments);
+
+    protected:
+        /* Protected in Sdl2Application; narrowing it to private warns. */
+        void tickEvent() override;
 
     private:
         void drawEvent() override;
-        void tickEvent() override;
 
         void keyPressEvent(KeyEvent &event) override;
         void keyReleaseEvent(KeyEvent &event) override;
@@ -78,7 +85,7 @@ namespace Magnum::Game {
         b2BodyId _landerBodyId{};
     };
 
-    MoonLander::~MoonLander() {
+    MoonLanderGame::~MoonLanderGame() {
         // Clean up Box2D resources
         if (_level) {
             _level.reset(nullptr);
@@ -88,7 +95,7 @@ namespace Magnum::Game {
         b2DestroyWorld(_worldId);
     }
 
-    MoonLander::MoonLander(const Arguments &arguments) : Platform::Application{arguments, NoCreate} {
+    MoonLanderGame::MoonLanderGame(const Arguments &arguments) : Platform::Application{arguments, NoCreate} {
         Utility::Arguments args;
 
         // TODO: add command options
@@ -194,11 +201,11 @@ namespace Magnum::Game {
         _timeline.start();
     }
 
-    void MoonLander::pointerMoveEvent(PointerMoveEvent &event) {
+    void MoonLanderGame::pointerMoveEvent(PointerMoveEvent &event) {
         // @todo: implement display of coords when pointer moves
     }
 
-    void MoonLander::pointerPressEvent(PointerEvent &event)
+    void MoonLanderGame::pointerPressEvent(PointerEvent &event)
     {
         if(event.isPrimary())
         {
@@ -220,14 +227,14 @@ namespace Magnum::Game {
     }
 
     /**
-     * 
+     *
      * @param event Application mouse scroll event.
      */
-    void MoonLander::scrollEvent(ScrollEvent &event) {
+    void MoonLanderGame::scrollEvent(ScrollEvent &event) {
         _cc->OnScrollEvent(event);
     }
 
-    void MoonLander::keyPressEvent(KeyEvent &event) {
+    void MoonLanderGame::keyPressEvent(KeyEvent &event) {
         // pass key event to camera control
         _cc->OnKeyPressEvent(event);
 
@@ -267,7 +274,7 @@ namespace Magnum::Game {
         }
     }
 
-    void MoonLander::keyReleaseEvent(KeyEvent &event) {
+    void MoonLanderGame::keyReleaseEvent(KeyEvent &event) {
         if(event.key() == Key::W) {
             _lander->resetForceY();
             event.setAccepted(true);
@@ -294,7 +301,7 @@ namespace Magnum::Game {
         }
     }
 
-    void MoonLander::drawEvent() {
+    void MoonLanderGame::drawEvent() {
         GL::defaultFramebuffer.clear(GL::FramebufferClear::Color);
 
         _level->draw(_cc->getCamera());
@@ -313,7 +320,7 @@ namespace Magnum::Game {
         redraw();
     }
 
-    void MoonLander::tickEvent()
+    void MoonLanderGame::tickEvent()
     {
         _timeline.nextFrame();
         const auto dt = _timeline.previousFrameDuration();
@@ -343,4 +350,4 @@ namespace Magnum::Game {
     }
 }
 
-MAGNUM_APPLICATION_MAIN(Magnum::Game::MoonLander)
+MAGNUM_APPLICATION_MAIN(MoonLanderGame)

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(MagnumLander LANGUAGES CXX VERSION "0.1.1")
+project(MagnumLander LANGUAGES CXX VERSION 0.1.2)
 
 set(CMAKE_CXX_STANDARD 20)
 
@@ -50,21 +50,12 @@ corrade_add_resource(MoonLander_RESOURCES res/resources.conf)
 
 add_executable(magnum_lander
         ${MoonLander_RESOURCES}
-        src/game.cpp
-        src/MoonLander/AssetManager.h
-        src/MoonLander/DrawableMesh.h
-        src/MoonLander/Game.h
-        src/MoonLander/Level.h
-        src/MoonLander/CameraControl.h
-        src/MoonLander/Sprite.h
-        src/MoonLander/SpriteAnimation.h
-        src/MoonLander/Lander.h
-        src/MoonLander/Box.h
+        src/MoonLanderGame.cpp
 )
 
 target_link_libraries(magnum_lander PRIVATE
         Corrade::Main
-        Magnum::Application
+        Magnum::Sdl2Application
         Magnum::GL
         Magnum::Magnum
         Magnum::MeshTools
