@@ -236,17 +236,20 @@ namespace {
 
     void MoonLanderGame::pointerMoveEvent(PointerMoveEvent &event) {
         if(!event.isPrimary() ||
-            !(event.pointers() & (Pointer::MouseLeft|Pointer::Finger)))
+            !(event.pointers() & (Pointer::MouseLeft|Pointer::Finger)) ||
+            !(event.modifiers() & Modifier::Alt)) {
             return;
+        }
 
         // Window pixels, Y down, into Box2D units. projectionSize() already
         // includes the aspect policy, which is what click-to-spawn uses.
         const Vector2 worldDelta = event.relativePosition()/Vector2{windowSize()}*
             _cc->getCamera().projectionSize()*Vector2::yScale(-1.0f);
-        if(worldDelta.dot() == 0.0f)
+        if(worldDelta.dot() == 0.0f) {
             return;
+        }
 
-        // Grab the world. Stored because tickEvent recenters on the lander.
+        // Grab the world. Stored because tickEvent re-centers on the lander.
         _cameraPanOffset -= worldDelta;
         _cc->move(-worldDelta);
         event.setAccepted(true);
@@ -260,6 +263,13 @@ namespace {
 
             if(event.pointer() & (Pointer::MouseLeft|Pointer::Finger))
             {
+                // Alt+drag grabs the world
+                if(event.modifiers() & Modifier::Alt) {
+                    event.setAccepted(true);
+                    return;
+                }
+
+                // Left click spans a box
                 const auto position = _cc->projectedPosition(
                     Vector2{event.position()},
                     Vector2{windowSize()}
