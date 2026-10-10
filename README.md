@@ -1,32 +1,25 @@
 # Moonlander
 
-This is an example implementation of the classic moonlander game in C++
-using the [Magnum](https://github.com/mosra/magnum) graphics engine.
+This is an example implementation of a modern moon-lander game prototype in C++
+using the [Magnum Graphics Engine](https://github.com/mosra/magnum).
 
 ![Alt text](doc/moonlander-1.png "Screenshot")
 
 ## Linux Instructions
 
 ### Fedora
-Use [package distro](https://github.com/alkavan/magnum-rpm) on Fedora and other RPM variants. 
+There are Corrade, Magnum, and JoltPhysics packages in the [TEK Federation RPM Repository](https://rpm.tekfed.org/fedora/44/x86_64/). 
 
 ## Windows Instructions
-Install [vcpkg](https://vcpkg.io/) dependency manager.
+**Install Corrade and Magnum from sources**
 
-**Install Corrade**
-```
-.\vcpkg install corrade --head
-```
+Install [MSYS2](https://www.msys2.org/) and open a **UCRT64** (or **CLANG64**) shell and follow
+[instructions](https://doc.magnum.graphics/magnum/building-integration.html#building-integration-packages-msys)
+to build the latest Magnum and Corrade packages.
 
-**Install Magnum**
+**Install Box2D from official repository**
 ```
-.\vcpkg install magnum --head
-.\vcpkg install magnum-plugins --head
-.\vcpkg install magnum-integration --head
-.\vcpkg install magnum-extras --head
-```
-
-**Install Box2D**
-```
-.\vcpkg install box2d
+pacman -S mingw-w64-ucrt-x86_64-box2d
+# or ...
+pacman -S mingw-w64-clang-x86_64-box2d
 ```
