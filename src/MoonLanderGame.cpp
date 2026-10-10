@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2022-2026 Igal Alkon
+// SPDX-License-Identifier: BSD-2-Clause
+
 #include <Corrade/Utility/Arguments.h>
 
 #include <Magnum/GL/Context.h>

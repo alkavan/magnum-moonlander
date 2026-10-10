@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2022-2026 Igal Alkon
+// SPDX-License-Identifier: BSD-2-Clause
+
 #ifndef MOONLANDER_GAME_H
 #define MOONLANDER_GAME_H
 
