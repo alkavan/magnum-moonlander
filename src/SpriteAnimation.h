@@ -17,7 +17,9 @@ namespace MoonLander {
     class SpriteAnimation {
     public:
         SpriteAnimation(Sprite &sprite, const Float frameDelay) : _sprite(sprite) {
-            Containers::Array<std::pair<Float, Int> > frames{static_cast<std::size_t>(_sprite.getFrameCount())};
+            Containers::Array<std::pair<Float, Int> > frames{
+                ValueInit, static_cast<std::size_t>(_sprite.getFrameCount())
+            };
 
             Float frameTime = 0.0f;
             for (std::size_t i = 0; i != frames.size(); ++i) {

@@ -87,7 +87,7 @@ namespace MoonLander {
         SceneGraph::DrawableGroup2D _groundGroup;
 
         b2WorldId _worldId;
-        Array<Box *> _boxes{0};
+        Array<Box *> _boxes{};
         Optional<Box *> _ground{};
 
     public:
