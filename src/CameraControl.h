@@ -6,6 +6,7 @@
 
 #include <Magnum/Platform/Sdl2Application.h>
 #include <Magnum/SceneGraph/Camera.h>
+#include <Magnum/Math/Functions.h>
 
 namespace MoonLander {
     using namespace Math::Literals;
@@ -55,6 +56,12 @@ namespace MoonLander {
         [[nodiscard]] bool isZoomingByVelocity() const;
 
         /**
+         * Zoom out linearly with flight speed. A reversal holds the lens,
+         * and a real stop walks back to the anchor at a fixed rate.
+         */
+        void updateZoomByVelocity(Vector2 velocity, Float dt, bool thrusting, bool immediate = false);
+
+        /**
          * @brief Checks if the current zoom level is close enough to the zoom anchor.
          * @param epsilon Precision threshold to determine closeness.
          * @return True if zoom is close to the anchor within the given epsilon, false otherwise.
@@ -73,6 +80,20 @@ namespace MoonLander {
 
         // Flag to indicate if zooming is driven by velocity
         bool _disableInput = false;
+        Float _zoomStoppedTime = 0.0f;
+
+        // Projection size grows linearly with flight speed until a capped zoom-out.
+        // Below ZoomFlySpeed the body is settling, not flying.
+        static constexpr Float ZoomFlySpeed = 1.5f;
+        static constexpr Float ZoomSpeedAtMax = 8.0f;
+        // Closer than the absolute max (100). Anchor is 50.
+        static constexpr Float ZoomOutMax = 70.0f;
+        // Longer than a thrust reversal through zero, so that dip is not a landing.
+        static constexpr Float ZoomStopHold = 0.5f;
+        // Projection units per second. Far zoom (70) back to the anchor (50) takes 2.5s.
+        static constexpr Float ZoomReturnRate = 8.0f;
+
+        [[nodiscard]] Vector2 zoomForSpeed(Float speed) const;
 
     public:
         // Setter methods
@@ -257,9 +278,61 @@ namespace MoonLander {
         _disableInput = false;
     }
 
-    /// Check if the camera is currently zooming due to velocity
     inline bool CameraControl::isZoomingByVelocity() const {
         return _disableInput;
+    }
+
+    inline Vector2 CameraControl::zoomForSpeed(const Float speed) const {
+        if(speed <= ZoomFlySpeed)
+            return _zoomAnchor;
+
+        const Float t = Math::clamp(
+            (speed - ZoomFlySpeed)/(ZoomSpeedAtMax - ZoomFlySpeed),
+            0.0f, 1.0f);
+        const Vector2 far{
+            Math::min(_zoomMax.x(), ZoomOutMax),
+            Math::min(_zoomMax.y(), ZoomOutMax)};
+        return Math::lerp(_zoomAnchor, far, t);
+    }
+
+    inline void CameraControl::updateZoomByVelocity(const Vector2 velocity, const Float dt, const bool thrusting, const bool immediate) {
+        const Float speed = velocity.length();
+        const Vector2 desired = zoomForSpeed(speed);
+
+        if(immediate) {
+            _zoomStoppedTime = 0.0f;
+            setZoom(desired);
+            startZoomingByVelocity();
+            return;
+        }
+
+        startZoomingByVelocity();
+
+        // Zoom-out tracks flight speed immediately. Both axes are set together.
+        if(desired.x() > _zoom.x()) {
+            _zoomStoppedTime = 0.0f;
+            setZoom(desired);
+            return;
+        }
+
+        // Still flying, or thrust is reversing velocity through zero. Hold the lens.
+        // Contact jitter is under ZoomFlySpeed, so it must not cancel the return.
+        if(thrusting || speed >= ZoomFlySpeed) {
+            _zoomStoppedTime = 0.0f;
+            return;
+        }
+
+        _zoomStoppedTime += dt;
+        if(_zoomStoppedTime < ZoomStopHold)
+            return;
+
+        // Landed. Walk back toward the anchor at a fixed rate. No easing.
+        const Float travel = ZoomReturnRate*Math::min(dt, 0.05f);
+        const Vector2 delta = _zoomAnchor - _zoom;
+        setZoom(_zoom + Vector2{
+            Math::clamp(delta.x(), -travel, travel),
+            Math::clamp(delta.y(), -travel, travel)
+        });
     }
 
     inline void CameraControl::move(const Vector2 displacement) const

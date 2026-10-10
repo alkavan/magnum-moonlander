@@ -11,7 +11,6 @@
 #include <Magnum/Math/ConfigurationValue.h>
 #include <Magnum/Math/Time.h>
 #include <Magnum/Math/Functions.h>
-#include <Magnum/Animation/Easing.h>
 
 #include <Magnum/Shaders/Flat.h>
 #include <Magnum/Platform/Sdl2Application.h>
@@ -26,59 +25,12 @@
 #include "Sprite.h"
 #include "SpriteAnimation.h"
 
-#include <set>
-
 #include <version_config.h>
 
 namespace {
     using namespace Magnum;
     using namespace Math::Literals;
     using namespace MoonLander;
-
-    // Projection size grows with speed (Box2D m/s). Larger size is zoom-out.
-    constexpr Float ZoomSpeedIdle = 0.8f;
-    constexpr Float ZoomSpeedFast = 8.0f;
-    constexpr Float SpeedSmoothTime = 0.25f;
-    constexpr Float ZoomSmoothTime = 0.8f;
-
-    struct ZoomByVelocityState {
-        Float smoothedSpeed = 0.0f;
-        bool primed = false;
-    };
-
-    ZoomByVelocityState _zoomByVelocity{};
-
-    Vector2 zoomForSpeed(const CameraControl& cameraControl, const Float speed) {
-        const Float normalized = Math::clamp(
-            (speed - ZoomSpeedIdle) / (ZoomSpeedFast - ZoomSpeedIdle),
-            0.0f, 1.0f);
-        // Flat at both ends, so creeping off the pad and settling do not twitch the lens.
-        const Float shaped = Animation::Easing::smootherstep(normalized);
-        return Math::lerp(cameraControl.getZoomAnchor(), cameraControl.getZoomMax(), shaped);
-    }
-
-    void UpdateZoomByVelocity(CameraControl& cameraControl, const Vector2 velocity, const Float dt, const bool immediate) {
-        const Float speed = velocity.length();
-
-        // Game start must already be the speed-matched zoom. Easing out of the
-        // constructor default looks like a zoom nobody asked for.
-        if(immediate || !_zoomByVelocity.primed) {
-            _zoomByVelocity.smoothedSpeed = speed;
-            _zoomByVelocity.primed = true;
-            cameraControl.setZoom(zoomForSpeed(cameraControl, speed));
-            cameraControl.startZoomingByVelocity();
-            return;
-        }
-
-        // Clamp so a stalled first frame cannot sling the zoom across its range.
-        const Float step = Math::clamp(dt, 0.0f, 0.05f);
-        const Float speedBlend = 1.0f - Math::exp(-step / SpeedSmoothTime);
-        _zoomByVelocity.smoothedSpeed = Math::lerp(_zoomByVelocity.smoothedSpeed, speed, speedBlend);
-
-        const Vector2 target = zoomForSpeed(cameraControl, _zoomByVelocity.smoothedSpeed);
-        const Float zoomBlend = 1.0f - Math::exp(-step / ZoomSmoothTime);
-        cameraControl.setZoom(Math::lerp(cameraControl.getZoom(), target, zoomBlend));
-    }
 
     constexpr Float _engineForceStep = 1.0f;
 
@@ -270,7 +222,7 @@ namespace {
             // Velocity is still zero, so this snaps to the idle zoom. Do this after
             // the lander scale is captured from the projection.
             const auto [_vx, _vy] = b2Body_GetLinearVelocity(_landerBodyId);
-            UpdateZoomByVelocity(*_cc, {_vx, _vy}, 0.0f, true);
+            _cc->updateZoomByVelocity({_vx, _vy}, 0.0f, false, true);
         }
 
         _engineEffectAnimation->start();
@@ -418,7 +370,7 @@ namespace {
             // Move the camera in world space. Do not subtract this from body positions.
             _cc->moveTo(landerPosition + _cameraPanOffset);
             const auto [_vx, _vy] = b2Body_GetLinearVelocity(_landerBodyId);
-            UpdateZoomByVelocity(*_cc, {_vx, _vy}, dt, false);
+            _cc->updateZoomByVelocity({_vx, _vy}, dt, static_cast<bool>(_pressedKeys));
         }
 
         // update
