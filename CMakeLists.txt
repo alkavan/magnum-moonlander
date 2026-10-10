@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 cmake_minimum_required(VERSION 3.22)
-project(MagnumLander LANGUAGES CXX VERSION 0.1.5)
+project(MagnumLander LANGUAGES CXX VERSION 0.1.6)
 
 set(CMAKE_CXX_STANDARD 20)
 
@@ -56,10 +56,13 @@ add_executable(magnum_lander
         src/MoonLanderGame.cpp
         src/AssetManager.cpp
         src/Box.cpp
+        src/Circle.cpp
+        src/World.cpp
         src/CameraControl.cpp
         src/DrawableMesh.cpp
         src/Lander.cpp
         src/Level.cpp
+        src/TerrainGenerator.cpp
         src/Sprite.cpp
         src/SpriteAnimation.cpp
 )

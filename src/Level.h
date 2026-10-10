@@ -4,21 +4,20 @@
 #ifndef MOONLANDER_LEVEL_H
 #define MOONLANDER_LEVEL_H
 
-#include <box2d/box2d.h>
 #include <Magnum/Math/DualComplex.h>
 #include <Magnum/Shaders/Flat.h>
-#include <Magnum/MeshTools/Compile.h>
-#include <Magnum/Primitives/Square.h>
-#include <Magnum/Trade/MeshData.h>
 #include <Magnum/SceneGraph/Drawable.h>
 #include <Corrade/Containers/GrowableArray.h>
 #include <Corrade/Containers/Optional.h>
+#include <Corrade/Containers/Array.h>
 
 #include "MoonLander.h"
+#include "World.h"
 #include "DrawableMesh.h"
 #include "Sprite.h"
 #include "Lander.h"
 #include "Box.h"
+#include "Circle.h"
 
 namespace MoonLander {
     using namespace Math::Literals;
@@ -32,42 +31,40 @@ namespace MoonLander {
         static constexpr Float steel = Float{490.7f};
     };
 
-    class BodyDefault {
-    public:
-        static constexpr Float friction = Float{0.8};
-        static constexpr Float density = Float{1.0};
-    };
-
     class ObjectDefault {
     public:
         static constexpr Color4 color = 0xcccccc_rgbf;
     };
 
-    b2BodyId newWorldObjectBody(
-        const b2WorldId worldId,
-        Object2D *object,
-        const DualComplex &transformation,
-        const Vector2 &size,
-        const b2BodyType type,
-        const Float density
-    );
-
     class Level {
     private:
         Scene2D &_scene;
+        World &_world;
 
         Shaders::FlatGL2D _shader{};
-        GL::Mesh _mesh{NoCreate};
+        GL::Mesh _boxMesh{NoCreate};
+        GL::Mesh _circleMesh{NoCreate};
+        GL::Mesh _terrainMesh{NoCreate};
+        GL::Mesh _padMesh{NoCreate};
 
         SceneGraph::DrawableGroup2D _boxGroup;
         SceneGraph::DrawableGroup2D _groundGroup;
+        SceneGraph::DrawableGroup2D _circleGroup;
+        SceneGraph::DrawableGroup2D _particleGroup;
 
-        b2WorldId _worldId;
         Array<Box *> _boxes{};
-        Optional<Box *> _ground{};
+        Array<Circle *> _circles{};
+        Array<Circle *> _particles{};
+
+        Object2D* _terrainObject = nullptr;
+        DrawableMesh* _terrainDrawable = nullptr;
+        Object2D* _padObject = nullptr;
+        DrawableMesh* _padDrawable = nullptr;
+
+        void buildMoonLandscape();
 
     public:
-        Level(Scene2D &scene, const b2WorldId worldId);
+        Level(Scene2D &scene, World &world);
 
         Box *newBox(SceneGraph::DrawableGroup2D &drawable_group, DualComplex transformation,
                     Vector2 size, Color4 color = ObjectDefault::color,
@@ -76,10 +73,17 @@ namespace MoonLander {
         Box *newBoxStatic(SceneGraph::DrawableGroup2D &drawable_group, DualComplex transformation,
                           Vector2 size, Color4 color);
 
+        Circle *newCircle(SceneGraph::DrawableGroup2D &drawable_group, DualComplex transformation,
+                          Float radius, Color4 color = ObjectDefault::color,
+                          Float density = BodyDefault::density);
+
         void initialize();
-        void update(const Float dt);
+        void update(Float dt);
         void draw(SceneGraph::Camera2D &camera);
+
         void addBox(const DualComplex &transformation);
+        void addCircle(const DualComplex &transformation, Float radius = 0.4f);
+        void addParticleCloud(const Vector2 &center, int count = 40, Float spread = 1.5f);
     };
 }
 

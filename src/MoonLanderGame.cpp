@@ -20,6 +20,7 @@
 
 #include "MoonLander.h"
 #include "Level.h"
+#include "World.h"
 #include "CameraControl.h"
 #include "AssetManager.h"
 #include "Sprite.h"
@@ -91,7 +92,7 @@ namespace {
 
         Containers::Pointer<SpriteAnimation> _engineEffectAnimation;
 
-        b2WorldId _worldId{};
+        Containers::Pointer<World> _world;
         b2BodyId _landerBodyId{};
         Vector2 _cameraPanOffset{};
         DirectionKeys _pressedKeys{};
@@ -111,13 +112,11 @@ namespace {
     };
 
     MoonLanderGame::~MoonLanderGame() {
-        // Clean up Box2D resources
+        // Clean up Box2D resources (World destructor destroys the Box2D world)
         if (_level) {
             _level.reset(nullptr);
         }
-
-        // Destroy the Box2D world
-        b2DestroyWorld(_worldId);
+        _world.reset();
     }
 
     MoonLanderGame::MoonLanderGame(const Arguments &arguments) : Platform::Application{arguments, NoCreate} {
@@ -161,13 +160,11 @@ namespace {
         // setup camera control
         _cc.emplace(CameraControl{new Object2D{&_scene}});
 
-        // create box2d world with gravity vector
-        auto worldDef = b2DefaultWorldDef();
-        worldDef.gravity = GravityConstant::Moon;
-        _worldId = b2CreateWorld(&worldDef);
+        // create physics world
+        _world.emplace(GravityConstant::Moon);
 
         // create and initialize level
-        _level.emplace(_scene, _worldId);
+        _level.emplace(_scene, *_world);
         _level->initialize();
 
         // create mesh for sprites
@@ -194,13 +191,12 @@ namespace {
             _landerObject.emplace(&_scene);
             _landerObject->setScaling(landerScale);
 
-            _landerBodyId = newWorldObjectBody(
-                _worldId,
+            _landerBodyId = _world->createBox(
                 _landerObject.get(),
                 transformation,
                 landerScale,
                 b2_dynamicBody,
-                2.0
+                2.0f
                 );
 
             _landerSprite.emplace(_spriteShader, *landerTexture, _landerSpriteMesh, Vector2i{20, 20});
@@ -365,7 +361,7 @@ namespace {
         const auto dt = _timeline.previousFrameDuration();
 
         // step the world and update all object positions
-        b2World_Step(_worldId, dt, 6);
+        _world->step(dt, 6);
 
         _engineEffectAnimation->tick();
 

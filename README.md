@@ -1,14 +1,14 @@
-# Moonlander
+# Magnum Moon Lander
 
-This is an example implementation of a modern moon-lander game prototype in C++
-using the [Magnum Graphics Engine](https://github.com/mosra/magnum).
+A prototype example of a modern Lunar Lander game in C++ using the
+[Magnum Graphics Engine](https://github.com/mosra/magnum) and [Box2D](https://box2d.org/).
 
 ![Alt text](doc/moonlander-1.png "Screenshot")
 
 ## Linux Instructions
 
-### Fedora
-There are Corrade, Magnum, and JoltPhysics packages in the [TEK Federation RPM Repository](https://rpm.tekfed.org/fedora/44/x86_64/). 
+### Fedora / Rocky Linux
+There are Corrade, Magnum, and Box2D packages in the [TEK Federation RPM Repository](https://rpm.tekfed.org/). 
 
 ## Windows Instructions
 **Install Corrade and Magnum from sources**
