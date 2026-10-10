@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.15)
-project(lander LANGUAGES CXX VERSION "0.1.0")
+cmake_minimum_required(VERSION 3.22)
+project(MagnumLander LANGUAGES CXX VERSION "0.1.1")
 
 set(CMAKE_CXX_STANDARD 20)
 
@@ -46,11 +46,9 @@ endif()
 
 find_package(OpenAL CONFIG REQUIRED)
 
-set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
-
 corrade_add_resource(MoonLander_RESOURCES res/resources.conf)
 
-add_executable(lander
+add_executable(magnum_lander
         ${MoonLander_RESOURCES}
         src/game.cpp
         src/MoonLander/AssetManager.h
@@ -64,7 +62,7 @@ add_executable(lander
         src/MoonLander/Box.h
 )
 
-target_link_libraries(lander PRIVATE
+target_link_libraries(magnum_lander PRIVATE
         Corrade::Main
         Magnum::Application
         Magnum::GL
