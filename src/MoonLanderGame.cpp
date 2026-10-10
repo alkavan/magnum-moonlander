@@ -10,6 +10,8 @@
 #include <Magnum/Math/ConfigurationValue.h>
 #include <Magnum/Math/Time.h>
 #include <Magnum/Math/Distance.h>
+#include <Magnum/Math/Functions.h>
+#include <Magnum/Animation/Easing.h>
 
 #include <Magnum/Shaders/Flat.h>
 #include <Magnum/Platform/Sdl2Application.h>
@@ -31,12 +33,54 @@ namespace {
     using namespace Math::Literals;
     using namespace MoonLander;
 
-    static void UpdateZoomByDistance(CameraControl& cameraControl, Vector2 p1, Vector2 p2);
+    // Projection size grows with speed (Box2D m/s). Larger size is zoom-out.
+    constexpr Float ZoomSpeedIdle = 0.8f;
+    constexpr Float ZoomSpeedFast = 8.0f;
+    constexpr Float SpeedSmoothTime = 0.25f;
+    constexpr Float ZoomSmoothTime = 0.8f;
+
+    struct ZoomByVelocityState {
+        Float smoothedSpeed = 0.0f;
+        bool primed = false;
+    };
+
+    ZoomByVelocityState _zoomByVelocity{};
+
+    Vector2 zoomForSpeed(const CameraControl& cameraControl, const Float speed) {
+        const Float normalized = Math::clamp(
+            (speed - ZoomSpeedIdle) / (ZoomSpeedFast - ZoomSpeedIdle),
+            0.0f, 1.0f);
+        // Flat at both ends, so creeping off the pad and settling do not twitch the lens.
+        const Float shaped = Animation::Easing::smootherstep(normalized);
+        return Math::lerp(cameraControl.getZoomAnchor(), cameraControl.getZoomMax(), shaped);
+    }
+
+    void UpdateZoomByVelocity(CameraControl& cameraControl, const Vector2 velocity, const Float dt, const bool immediate) {
+        const Float speed = velocity.length();
+
+        // Game start must already be the speed-matched zoom. Easing out of the
+        // constructor default looks like a zoom nobody asked for.
+        if(immediate || !_zoomByVelocity.primed) {
+            _zoomByVelocity.smoothedSpeed = speed;
+            _zoomByVelocity.primed = true;
+            cameraControl.setZoom(zoomForSpeed(cameraControl, speed));
+            cameraControl.startZoomingByVelocity();
+            return;
+        }
+
+        // Clamp so a stalled first frame cannot sling the zoom across its range.
+        const Float step = Math::clamp(dt, 0.0f, 0.05f);
+        const Float speedBlend = 1.0f - Math::exp(-step / SpeedSmoothTime);
+        _zoomByVelocity.smoothedSpeed = Math::lerp(_zoomByVelocity.smoothedSpeed, speed, speedBlend);
+
+        const Vector2 target = zoomForSpeed(cameraControl, _zoomByVelocity.smoothedSpeed);
+        const Float zoomBlend = 1.0f - Math::exp(-step / ZoomSmoothTime);
+        cameraControl.setZoom(Math::lerp(cameraControl.getZoom(), target, zoomBlend));
+    }
 
     constexpr Float _engineForceStep = 1.0f;
 
-    static Vector2 _previousPointerPosition = {0.0f, 0.0f};
-    static Float _previousVelocityMagnitude = 0.0f;
+    Vector2 _previousPointerPosition = {0.0f, 0.0f};
 
     /**
      * Represents the MoonLander application, inheriting from Platform::Application.
@@ -86,6 +130,7 @@ namespace {
 
         b2WorldId _worldId{};
         b2BodyId _landerBodyId{};
+        Vector2 _cameraPanOffset{};
     };
 
     MoonLanderGame::~MoonLanderGame() {
@@ -113,7 +158,7 @@ namespace {
          * enable only 2x MSAA if we have enough DPI.
          */
         {
-            const auto windowTitle = std::format("Magnum Moonlander ({}-alpha)", PROJECT_VERSION);
+            const auto windowTitle = std::format("Magnum MoonMander ({}-alpha)", PROJECT_VERSION);
             const Vector2 dpiScaling = this->dpiScaling({});
             Configuration conf;
             conf.setTitle(windowTitle).setSize(conf.size(), dpiScaling);
@@ -193,6 +238,14 @@ namespace {
 
             // lander
             _lander.emplace(*_landerObject, *_landerSprite, *_engineEffectSprite, *_engineEffectAnimation);
+
+            // Body is already at this translation; keep the first frame on it.
+            _cc->moveTo(transformation.translation());
+
+            // Velocity is still zero, so this snaps to the idle zoom. Do this after
+            // the lander scale is captured from the projection.
+            const auto velocity = b2Body_GetLinearVelocity(_landerBodyId);
+            UpdateZoomByVelocity(*_cc, {velocity.x, velocity.y}, 0.0f, true);
         }
 
         _engineEffectAnimation->start();
@@ -205,7 +258,21 @@ namespace {
     }
 
     void MoonLanderGame::pointerMoveEvent(PointerMoveEvent &event) {
-        // @todo: implement display of coords when pointer moves
+        if(!event.isPrimary() ||
+            !(event.pointers() & (Pointer::MouseLeft|Pointer::Finger)))
+            return;
+
+        // Window pixels, Y down, into Box2D units. projectionSize() already
+        // includes the aspect policy, which is what click-to-spawn uses.
+        const Vector2 worldDelta = event.relativePosition()/Vector2{windowSize()}*
+            _cc->getCamera().projectionSize()*Vector2::yScale(-1.0f);
+        if(worldDelta.dot() == 0.0f)
+            return;
+
+        // Grab the world. Stored because tickEvent recenters on the lander.
+        _cameraPanOffset -= worldDelta;
+        _cc->move(-worldDelta);
+        event.setAccepted(true);
     }
 
     void MoonLanderGame::pointerPressEvent(PointerEvent &event)
@@ -309,14 +376,18 @@ namespace {
 
         _level->draw(_cc->getCamera());
 
+        // camera.draw() uses projection * cameraMatrix * model. Sprites are not in that
+        // group, so they must apply the same view or they drift off the Box2D bodies.
+        const Matrix3 cameraMatrix = _cc->getCamera().cameraMatrix();
+
         _landerSprite->draw(
                 _cc->getCamera().projectionMatrix(),
-                _landerObject->transformationMatrix()
+                cameraMatrix * _landerObject->absoluteTransformationMatrix()
                 );
 
         _engineEffectSprite->draw(
                 _cc->getCamera().projectionMatrix(),
-                _engineEffectObject->absoluteTransformationMatrix()
+                cameraMatrix * _engineEffectObject->absoluteTransformationMatrix()
                 );
 
         swapBuffers();
@@ -337,19 +408,18 @@ namespace {
 
         if(_lander) {
             _lander->update(dt, _landerBodyId);
-        }
 
-        // move camera to lander position
-        // const auto [landerX, landerY] = b2Body_GetPosition(_landerBodyId);
-        // const auto landerPosition = Vector2{landerX, landerY};
-        // _cc->moveTo(landerPosition);
+            const auto [_x, _y] = b2Body_GetPosition(_landerBodyId);
+            const Vector2 landerPosition{_x, _y};
+
+            // Move the camera in world space. Do not subtract this from body positions.
+            _cc->moveTo(landerPosition + _cameraPanOffset);
+            const auto velocity = b2Body_GetLinearVelocity(_landerBodyId);
+            UpdateZoomByVelocity(*_cc, {velocity.x, velocity.y}, dt, false);
+        }
 
         // update
         _cc->updateProjection();
-
-        // const Vector2 shipPosition = _lander->getObject().translation();
-        // const Vector2 screenCenter = Vector2{windowSize()} / 2.0f;
-        // UpdateZoomByDistance(*_cc, shipPosition, screenCenter);
     }
 }
 

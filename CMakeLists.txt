@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 cmake_minimum_required(VERSION 3.22)
-project(MagnumLander LANGUAGES CXX VERSION 0.1.3)
+project(MagnumLander LANGUAGES CXX VERSION 0.1.4)
 
 set(CMAKE_CXX_STANDARD 20)
 

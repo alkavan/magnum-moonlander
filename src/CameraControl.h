@@ -264,7 +264,9 @@ namespace MoonLander {
 
     inline void CameraControl::move(const Vector2 displacement) const
     {
-        _cameraObject->translate(displacement * _zoom);
+        // World units, same space as Box2D. Multiplying by _zoom (projection size)
+        // makes the view slide away from the bodies as soon as you zoom.
+        _cameraObject->translate(displacement);
     }
 
     inline void CameraControl::moveTo(const Vector2 point) const
