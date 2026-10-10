@@ -10,7 +10,11 @@
 #include <Magnum/Animation/Track.h>
 #include <Magnum/Math/Color.h>
 
+#include "MoonLander.h"
+
 namespace MoonLander {
+    using namespace Magnum;
+
     class Sprite {
     private:
         Shaders::FlatGL2D &_shader;
@@ -25,45 +29,13 @@ namespace MoonLander {
 
     public:
         Sprite(Shaders::FlatGL2D &shader, GL::Texture2D &texture, GL::Mesh &mesh,
-               const Vector2i &frameSize) : _shader(shader), _texture(texture), _mesh(mesh), _frameSize(frameSize) {
-            auto imageSize = _texture.imageSize(0);
+               const Vector2i &frameSize);
 
-            _gridSize.x() = imageSize.x() / _frameSize.x();
-            _gridSize.y() = imageSize.y() / _frameSize.y();
-            _frameCount = _gridSize.product();
-        }
-
-        void setFrameIndex(Int frameIndex) {
-            if (const auto maxFrameIndex = _frameCount - 1; frameIndex > maxFrameIndex) {
-                Error() << "unable to set frame index" << frameIndex
-                        << "last frame is" << maxFrameIndex << "(fallback to 0)";
-                frameIndex = 0;
-            }
-
-            _frameIndex = frameIndex;
-        }
-
-        [[nodiscard]] Int getFrameIndex() const {
-            return _frameIndex;
-        }
-
-        [[nodiscard]] Int &getFrameIndexRef() {
-            return _frameIndex;
-        }
-
-        [[nodiscard]] Int getFrameCount() const {
-            return _frameCount;
-        }
-
-        void draw(const Matrix3 &cameraProjectionMatrix, const Matrix3 &objectTransformationMatrix) const {
-            _shader.setTransformationProjectionMatrix(cameraProjectionMatrix * objectTransformationMatrix);
-
-            _shader.setTextureMatrix(
-                Matrix3::scaling(1.0f / Vector2{_gridSize}) *
-                Matrix3::translation(Vector2{Vector2i{_frameIndex, 0}}));
-
-            _shader.bindTexture(_texture).draw(_mesh);
-        }
+        void setFrameIndex(Int frameIndex);
+        [[nodiscard]] Int getFrameIndex() const;
+        [[nodiscard]] Int &getFrameIndexRef();
+        [[nodiscard]] Int getFrameCount() const;
+        void draw(const Matrix3 &cameraProjectionMatrix, const Matrix3 &objectTransformationMatrix) const;
     };
 }
 

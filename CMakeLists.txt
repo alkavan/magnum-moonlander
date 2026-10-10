@@ -54,6 +54,14 @@ corrade_add_resource(MoonLander_RESOURCES res/resources.conf)
 add_executable(magnum_lander
         ${MoonLander_RESOURCES}
         src/MoonLanderGame.cpp
+        src/AssetManager.cpp
+        src/Box.cpp
+        src/CameraControl.cpp
+        src/DrawableMesh.cpp
+        src/Lander.cpp
+        src/Level.cpp
+        src/Sprite.cpp
+        src/SpriteAnimation.cpp
 )
 
 target_link_libraries(magnum_lander PRIVATE

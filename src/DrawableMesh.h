@@ -22,17 +22,9 @@ namespace MoonLander {
             Shaders::FlatGL2D &shader,
             const Color4 &color,
             SceneGraph::DrawableGroup2D &group
-        ) : SceneGraph::Drawable2D{object, &group},
-            _mesh(mesh), _shader(shader), _color(color) {
-        }
+        );
 
-        void draw(const Matrix3 &transformationMatrix, SceneGraph::Camera2D &camera) override {
-            _shader
-                    .setTransformationProjectionMatrix(camera.projectionMatrix() * transformationMatrix)
-                    .setColor(_color);
-
-            _shader.draw(_mesh);
-        }
+        void draw(const Matrix3 &transformationMatrix, SceneGraph::Camera2D &camera) override;
 
     private:
         GL::Mesh &_mesh;

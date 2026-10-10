@@ -5,26 +5,18 @@
 #define MOONLANDER_BOX_H
 
 #include "MoonLander.h"
+#include "DrawableMesh.h"
 
 namespace MoonLander {
-        class Box {
-        private:
-            Object2D &_object;
-            b2BodyId _bodyId;
-            DrawableMesh &_drawable;
-        public:
-            Box(Object2D &object, const b2BodyId bodyId, DrawableMesh &drawable) :
-            _object(object), _bodyId(bodyId), _drawable(drawable) {}
-
-            void update(const Float dt) const {
-                const auto userData = b2Body_GetUserData(_bodyId);
-                const auto [x, y] = b2Body_GetPosition(_bodyId);
-                const auto angle = b2Rot_GetAngle(b2Body_GetRotation(_bodyId));
-
-                static_cast<Object2D*>(userData)->setTranslation({x, y})
-                    .setRotation(Complex::rotation(Rad(angle)));
-            }
-        };
-} // Game
+    class Box {
+    private:
+        Object2D &_object;
+        b2BodyId _bodyId;
+        DrawableMesh &_drawable;
+    public:
+        Box(Object2D &object, const b2BodyId bodyId, DrawableMesh &drawable);
+        void update(const Float dt) const;
+    };
+}
 
 #endif //MOONLANDER_BOX_H

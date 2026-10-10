@@ -5,10 +5,12 @@
 #define MOONLANDER_ASSETMANAGER_H
 
 #include <unordered_map>
+#include <string>
 
 #include <Corrade/Utility/Resource.h>
 #include <Corrade/PluginManager/Manager.h>
 #include <Corrade/Containers/Optional.h>
+#include <Corrade/Containers/Pointer.h>
 
 #include <Magnum/GL/Texture.h>
 #include <Magnum/GL/TextureFormat.h>
@@ -18,7 +20,14 @@
 
 #include <Magnum/ImageView.h>
 
+#include "MoonLander.h"
+
 namespace MoonLander {
+    using namespace Magnum;
+    using namespace Corrade;
+    using Containers::Optional;
+    using Containers::Pointer;
+
     class AssetManager {
     private:
         PluginManager::Manager<Trade::AbstractImporter> _manager;
@@ -27,42 +36,11 @@ namespace MoonLander {
         Utility::Resource _resource;
 
     public:
-        AssetManager() : _resource{"sprites"} {
-            /* Load image importer plugin */
-            _importer = _manager.loadAndInstantiate("AnyImageImporter");
+        AssetManager();
 
-            /* If importer was not loaded, exit with error */
-            if (!_importer) std::exit(1);
-        };
-
-        void addTexture(const std::string &key, const std::string &filename) {
-            Optional<Trade::ImageData2D> image = loadImage(filename);
-            const Vector2i imageSize = image->size();
-
-            GL::Texture2D texture;
-            texture.setWrapping(GL::SamplerWrapping::ClampToEdge)
-                    .setMagnificationFilter(GL::SamplerFilter::Linear)
-                    .setMinificationFilter(GL::SamplerFilter::Linear)
-                    .setStorage(1, GL::textureFormat(image->format()), imageSize)
-                    .setSubImage(0, {}, *image)
-                    .setMagnificationFilter(SamplerFilter::Nearest);
-
-            _assets.try_emplace(key, std::move(texture));
-        }
-
-        GL::Texture2D *getTexture(const std::string &key) {
-            return &_assets[key];
-        }
-
-        Optional<Trade::ImageData2D> loadImage(const std::string &filename) {
-            if (!_importer->openData(_resource.getRaw(filename)))
-                Fatal{} << "Can't open image file with AnyImageImporter";
-
-            Optional<Trade::ImageData2D> image = _importer->image2D(0);
-            CORRADE_INTERNAL_ASSERT(image);
-
-            return image;
-        }
+        void addTexture(const std::string &key, const std::string &filename);
+        GL::Texture2D *getTexture(const std::string &key);
+        Optional<Trade::ImageData2D> loadImage(const std::string &filename);
     };
 }
 
