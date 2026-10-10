@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include <Corrade/Utility/Arguments.h>
+#include <Corrade/Containers/EnumSet.h>
 
 #include <Magnum/GL/Context.h>
 #include <Magnum/GL/DefaultFramebuffer.h>
@@ -9,7 +10,6 @@
 
 #include <Magnum/Math/ConfigurationValue.h>
 #include <Magnum/Math/Time.h>
-#include <Magnum/Math/Distance.h>
 #include <Magnum/Math/Functions.h>
 #include <Magnum/Animation/Easing.h>
 
@@ -25,6 +25,8 @@
 #include "AssetManager.h"
 #include "Sprite.h"
 #include "SpriteAnimation.h"
+
+#include <set>
 
 #include <version_config.h>
 
@@ -80,6 +82,15 @@ namespace {
 
     constexpr Float _engineForceStep = 1.0f;
 
+    enum class DirectionKey: UnsignedByte {
+        Up = 1 << 0,
+        Down = 1 << 1,
+        Right = 1 << 2,
+        Left = 1 << 3
+    };
+    using DirectionKeys = Containers::EnumSet<DirectionKey>;
+    CORRADE_ENUMSET_OPERATORS(DirectionKeys)
+
     Vector2 _previousPointerPosition = {0.0f, 0.0f};
 
     /**
@@ -131,6 +142,20 @@ namespace {
         b2WorldId _worldId{};
         b2BodyId _landerBodyId{};
         Vector2 _cameraPanOffset{};
+        DirectionKeys _pressedKeys{};
+
+        void applyPressedThrust() {
+            _lander->resetForceX();
+            _lander->resetForceY();
+            if(_pressedKeys & DirectionKey::Up)
+                _lander->addForceY(_engineForceStep);
+            if(_pressedKeys & DirectionKey::Down)
+                _lander->addForceY(-_engineForceStep);
+            if(_pressedKeys & DirectionKey::Right)
+                _lander->addForceX(_engineForceStep);
+            if(_pressedKeys & DirectionKey::Left)
+                _lander->addForceX(-_engineForceStep);
+        }
     };
 
     MoonLanderGame::~MoonLanderGame() {
@@ -244,8 +269,8 @@ namespace {
 
             // Velocity is still zero, so this snaps to the idle zoom. Do this after
             // the lander scale is captured from the projection.
-            const auto velocity = b2Body_GetLinearVelocity(_landerBodyId);
-            UpdateZoomByVelocity(*_cc, {velocity.x, velocity.y}, 0.0f, true);
+            const auto [_vx, _vy] = b2Body_GetLinearVelocity(_landerBodyId);
+            UpdateZoomByVelocity(*_cc, {_vx, _vy}, 0.0f, true);
         }
 
         _engineEffectAnimation->start();
@@ -314,27 +339,14 @@ namespace {
             exit();
         }
 
-        // forward
-        if(event.key() == Key::W) {
-            _lander->addForceY(_engineForceStep);
-            event.setAccepted(true);
-        }
+        bool handled = false;
+        if(event.key() == Key::W) { _pressedKeys |= DirectionKey::Up; handled = true; }
+        else if(event.key() == Key::S) { _pressedKeys |= DirectionKey::Down; handled = true; }
+        else if(event.key() == Key::D) { _pressedKeys |= DirectionKey::Right; handled = true; }
+        else if(event.key() == Key::A) { _pressedKeys |= DirectionKey::Left; handled = true; }
 
-        // backward
-        if(event.key() == Key::S) {
-            _lander->addForceY(-_engineForceStep);
-            event.setAccepted(true);
-        }
-
-        // right
-        if(event.key() == Key::D) {
-            _lander->addForceX(_engineForceStep);
-            event.setAccepted(true);
-        }
-
-        // left
-        if(event.key() == Key::A) {
-            _lander->addForceX(-_engineForceStep);
+        if(handled) {
+            applyPressedThrust();
             event.setAccepted(true);
         }
 
@@ -345,23 +357,14 @@ namespace {
     }
 
     void MoonLanderGame::keyReleaseEvent(KeyEvent &event) {
-        if(event.key() == Key::W) {
-            _lander->resetForceY();
-            event.setAccepted(true);
-        }
+        bool handled = false;
+        if(event.key() == Key::W) { _pressedKeys &= ~DirectionKey::Up; handled = true; }
+        else if(event.key() == Key::S) { _pressedKeys &= ~DirectionKey::Down; handled = true; }
+        else if(event.key() == Key::D) { _pressedKeys &= ~DirectionKey::Right; handled = true; }
+        else if(event.key() == Key::A) { _pressedKeys &= ~DirectionKey::Left; handled = true; }
 
-        if(event.key() == Key::S) {
-            _lander->resetForceY();
-            event.setAccepted(true);
-        }
-
-        if(event.key() == Key::D) {
-            _lander->resetForceX();
-            event.setAccepted(true);
-        }
-
-        if(event.key() == Key::A) {
-            _lander->resetForceX();
+        if(handled) {
+            applyPressedThrust();
             event.setAccepted(true);
         }
 
@@ -414,8 +417,8 @@ namespace {
 
             // Move the camera in world space. Do not subtract this from body positions.
             _cc->moveTo(landerPosition + _cameraPanOffset);
-            const auto velocity = b2Body_GetLinearVelocity(_landerBodyId);
-            UpdateZoomByVelocity(*_cc, {velocity.x, velocity.y}, dt, false);
+            const auto [_vx, _vy] = b2Body_GetLinearVelocity(_landerBodyId);
+            UpdateZoomByVelocity(*_cc, {_vx, _vy}, dt, false);
         }
 
         // update
